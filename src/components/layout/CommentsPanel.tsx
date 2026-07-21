@@ -42,6 +42,7 @@ export function CommentsPanel() {
   const comments = useScriptStore((s) => s.doc.comments)
   const elements = useScriptStore((s) => s.doc.elements)
   const selectedId = useScriptStore((s) => s.selectedId)
+  const viewPage = useScriptStore((s) => s.viewPage)
   const activeCommentId = useScriptStore((s) => s.activeCommentId)
   const setActiveComment = useScriptStore((s) => s.setActiveComment)
   const selectElement = useScriptStore((s) => s.selectElement)
@@ -63,12 +64,17 @@ export function CommentsPanel() {
     return map
   }, [pages])
 
+  const onTitlePage = viewPage === 'title'
+
+  // Script-body page in view (selection can refine when not on the title page).
   const currentPage = useMemo(() => {
+    if (onTitlePage) return null
+    if (typeof viewPage === 'number') return viewPage
     if (selectedId && elementPage.has(selectedId)) {
       return elementPage.get(selectedId)!
     }
     return pages[0]?.pageNumber ?? 1
-  }, [selectedId, elementPage, pages])
+  }, [onTitlePage, viewPage, selectedId, elementPage, pages])
 
   const lastPage = pages[pages.length - 1]?.pageNumber ?? 1
   const firstPage = pages[0]?.pageNumber ?? 1
@@ -82,8 +88,18 @@ export function CommentsPanel() {
         if (pageFilter === 'all') return true
         const page = elementPage.get(comment.elementId)
         if (page == null) return false
-        if (pageFilter === 'this') return page === currentPage
-        if (pageFilter === 'next') return page === currentPage + 1
+
+        // Title page has no script comments — These filters stay empty there.
+        if (onTitlePage && (pageFilter === 'this' || pageFilter === 'first')) {
+          return false
+        }
+
+        if (pageFilter === 'this') return currentPage != null && page === currentPage
+        if (pageFilter === 'next') {
+          // From the title page, "next" is script page 1.
+          const next = onTitlePage ? firstPage : currentPage != null ? currentPage + 1 : null
+          return next != null && page === next
+        }
         if (pageFilter === 'first') return page === firstPage
         if (pageFilter === 'last') return page === lastPage
         return true
@@ -95,6 +111,7 @@ export function CommentsPanel() {
     statusFilter,
     pageFilter,
     elementPage,
+    onTitlePage,
     currentPage,
     firstPage,
     lastPage,

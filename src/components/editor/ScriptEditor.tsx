@@ -25,6 +25,7 @@ export function ScriptEditor() {
   const redo = useScriptStore((s) => s.redo)
   const saveNow = useScriptStore((s) => s.saveNow)
   const setPageCount = useScriptStore((s) => s.setPageCount)
+  const setViewPage = useScriptStore((s) => s.setViewPage)
   const openFind = useScriptStore((s) => s.openFind)
   const findQuery = useScriptStore((s) => s.findQuery)
   const findTypeFilter = useScriptStore((s) => s.findTypeFilter)
@@ -64,7 +65,51 @@ export function ScriptEditor() {
     setPageCount(pageCount + 1)
   }, [pageCount, setPageCount])
 
-  // When pagination moves the active element onto another page, restore focus.
+  // Track whether the title page or a script body page is in view.
+  useEffect(() => {
+    const canvas = document.querySelector('.script-canvas')
+    if (!(canvas instanceof HTMLElement)) return
+
+    const updateViewPage = () => {
+      const pageNodes = canvas.querySelectorAll('.script-page')
+      if (pageNodes.length === 0) return
+
+      const rootRect = canvas.getBoundingClientRect()
+      const midpoint = rootRect.top + rootRect.height * 0.35
+      let bestNode: Element | null = null
+      let bestDist = Number.POSITIVE_INFINITY
+
+      for (const node of pageNodes) {
+        const rect = node.getBoundingClientRect()
+        if (rect.bottom < rootRect.top || rect.top > rootRect.bottom) continue
+        const center = rect.top + rect.height / 2
+        const dist = Math.abs(center - midpoint)
+        if (dist < bestDist) {
+          bestDist = dist
+          bestNode = node
+        }
+      }
+
+      if (!bestNode) return
+      if (bestNode.classList.contains('script-page--title')) {
+        setViewPage('title')
+        return
+      }
+      const label = bestNode.getAttribute('aria-label') ?? ''
+      const match = label.match(/Page\s+(\d+)/i)
+      setViewPage(match ? Number(match[1]) : 1)
+    }
+
+    updateViewPage()
+    canvas.addEventListener('scroll', updateViewPage, { passive: true })
+    window.addEventListener('resize', updateViewPage)
+    return () => {
+      canvas.removeEventListener('scroll', updateViewPage)
+      window.removeEventListener('resize', updateViewPage)
+    }
+  }, [hydrated, pages.length, setViewPage])
+
+  // When pagination remounts the active element onto another page, restore focus.
   useLayoutEffect(() => {
     const prev = prevPageSigRef.current
     prevPageSigRef.current = pageSig

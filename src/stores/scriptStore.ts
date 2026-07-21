@@ -63,6 +63,8 @@ interface ScriptState {
   hydrated: boolean
   dirty: boolean
   pageCount: number
+  /** Which page is in view: title page or a 1-based script body page. */
+  viewPage: 'title' | number
   undoStack: HistorySnapshot[]
   redoStack: HistorySnapshot[]
   findOpen: boolean
@@ -86,6 +88,7 @@ interface ScriptState {
   addScene: () => string
   updateSceneMeta: (sceneElementId: string, patch: SceneMetaPatch) => void
   setPageCount: (pageCount: number) => void
+  setViewPage: (viewPage: 'title' | number) => void
   undo: () => void
   redo: () => void
   saveNow: () => Promise<void>
@@ -250,6 +253,7 @@ export const useScriptStore = create<ScriptState>((set, get) => ({
   hydrated: false,
   dirty: false,
   pageCount: 1,
+  viewPage: 'title',
   undoStack: [],
   redoStack: [],
   findOpen: false,
@@ -497,6 +501,11 @@ export const useScriptStore = create<ScriptState>((set, get) => ({
   setPageCount: (pageCount) => {
     if (get().pageCount === pageCount) return
     set({ pageCount: Math.max(1, pageCount) })
+  },
+
+  setViewPage: (viewPage) => {
+    if (get().viewPage === viewPage) return
+    set({ viewPage })
   },
 
   undo: () => {
