@@ -42,6 +42,7 @@ interface ScriptState {
   saveStatus: SaveStatus
   hydrated: boolean
   dirty: boolean
+  pageCount: number
   undoStack: HistorySnapshot[]
   redoStack: HistorySnapshot[]
   hydrate: () => Promise<void>
@@ -56,6 +57,7 @@ interface ScriptState {
   deleteElement: (id: string) => string | null
   addScene: () => string
   updateSceneMeta: (sceneElementId: string, patch: SceneMetaPatch) => void
+  setPageCount: (pageCount: number) => void
   undo: () => void
   redo: () => void
   saveNow: () => Promise<void>
@@ -118,6 +120,7 @@ export const useScriptStore = create<ScriptState>((set, get) => ({
   saveStatus: 'idle',
   hydrated: false,
   dirty: false,
+  pageCount: 1,
   undoStack: [],
   redoStack: [],
 
@@ -281,6 +284,11 @@ export const useScriptStore = create<ScriptState>((set, get) => ({
 
     if (nextHeading === element.text) return
     get().updateElementText(sceneElementId, nextHeading)
+  },
+
+  setPageCount: (pageCount) => {
+    if (get().pageCount === pageCount) return
+    set({ pageCount: Math.max(1, pageCount) })
   },
 
   undo: () => {

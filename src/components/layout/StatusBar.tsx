@@ -1,7 +1,6 @@
 import { useLocation, useNavigate } from 'react-router-dom'
 import { getNavItemByPath } from '@/navigation/navItems'
 import {
-  estimatePageCount,
   extractScenes,
   findSceneForElement,
 } from '@/screenplay/elementRules'
@@ -23,6 +22,7 @@ export function StatusBar() {
   const saveStatus = useScriptStore((s) => s.saveStatus)
   const dirty = useScriptStore((s) => s.dirty)
   const title = useScriptStore((s) => s.doc.title)
+  const pageCount = useScriptStore((s) => s.pageCount)
   const onScript = location.pathname.startsWith('/script')
 
   const selected =
@@ -30,7 +30,6 @@ export function StatusBar() {
       ? null
       : (elements.find((el) => el.id === selectedId) ?? null)
   const scene = findSceneForElement(elements, selectedId)
-  const pageEstimate = estimatePageCount(elements)
   const sceneCount = extractScenes(elements).length
 
   return (
@@ -73,7 +72,7 @@ export function StatusBar() {
               Scene {scene?.number ?? '—'}
             </span>
             <span className="statusbar-item">{sceneCount} scenes</span>
-            <span className="statusbar-item">~{pageEstimate} pp</span>
+            <span className="statusbar-item">{pageCount} pages</span>
           </>
         ) : (
           <>

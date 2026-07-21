@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { SceneNavigator } from '@/components/editor/SceneNavigator'
 import { ScriptElementLine } from '@/components/editor/ScriptElementLine'
 import { collectCharacterNames } from '@/screenplay/elementRules'
+import { useScriptPagination } from '@/hooks/useScriptPagination'
 import { useScriptStore } from '@/stores/scriptStore'
 
 export function ScriptEditor() {
@@ -15,22 +16,24 @@ export function ScriptEditor() {
   const undo = useScriptStore((s) => s.undo)
   const redo = useScriptStore((s) => s.redo)
   const saveNow = useScriptStore((s) => s.saveNow)
+  const setPageCount = useScriptStore((s) => s.setPageCount)
+
+  const { pages, pageCount } = useScriptPagination(elements, title)
+  const characters = collectCharacterNames(elements)
 
   useEffect(() => {
-    // Hydration is owned by AppShell; this is a safety net if mounted alone.
     if (!hydrated) void hydrate()
   }, [hydrate, hydrated])
+
+  useEffect(() => {
+    setPageCount(pageCount)
+  }, [pageCount, setPageCount])
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       const mod = event.metaKey || event.ctrlKey
       if (!mod) return
       const key = event.key.toLowerCase()
-      const target = event.target as HTMLElement | null
-      const inField =
-        target?.tagName === 'INPUT' ||
-        target?.tagName === 'TEXTAREA' ||
-        target?.isContentEditable
 
       if (key === 's') {
         event.preventDefault()
@@ -39,10 +42,6 @@ export function ScriptEditor() {
       }
 
       if (key === 'z' && !event.shiftKey) {
-        if (inField && document.activeElement === target) {
-          // Allow native text undo inside textarea for current field;
-          // still support structural undo when not composing selection quirks.
-        }
         event.preventDefault()
         undo()
         return
@@ -64,8 +63,6 @@ export function ScriptEditor() {
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [redo, saveNow, undo])
 
-  const characters = collectCharacterNames(elements)
-
   if (!hydrated) {
     return (
       <div className="script-workspace">
@@ -78,29 +75,43 @@ export function ScriptEditor() {
     <div className="script-workspace">
       <SceneNavigator />
       <div className="script-canvas">
-        <div className="script-page script-page--live" aria-label="Screenplay editor">
-          <input
-            className="script-title-input"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            aria-label="Screenplay title"
-            placeholder="Untitled Screenplay"
-          />
-          <div className="script-elements">
-            {elements.map((element) => (
-              <ScriptElementLine
-                key={element.id}
-                element={element}
-                isSelected={selectedId === element.id}
-                shouldFocus={focusRequestId === element.id}
-                characterNames={characters}
-              />
-            ))}
-          </div>
-          <p className="script-hint">
-            Enter continues · Tab cycles type · ⌘/Ctrl+S saves · Autosaves to IndexedDB
-          </p>
-        </div>
+        {pages.map((page, pageIndex) => (
+          <section
+            key={`page-${page.pageNumber}`}
+            className="script-page script-page--live"
+            aria-label={`Page ${page.pageNumber}`}
+          >
+            <div className="script-page-body">
+              {pageIndex === 0 ? (
+                <input
+                  className="script-title-input"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  aria-label="Screenplay title"
+                  placeholder="Untitled Screenplay"
+                />
+              ) : (
+                <div className="script-page-continued" aria-hidden>
+                  {title || 'Untitled Screenplay'} — continued
+                </div>
+              )}
+
+              <div className="script-elements">
+                {page.elements.map((element) => (
+                  <ScriptElementLine
+                    key={element.id}
+                    element={element}
+                    isSelected={selectedId === element.id}
+                    shouldFocus={focusRequestId === element.id}
+                    characterNames={characters}
+                  />
+                ))}
+              </div>
+            </div>
+
+            <footer className="script-page-number">{page.pageNumber}.</footer>
+          </section>
+        ))}
       </div>
     </div>
   )

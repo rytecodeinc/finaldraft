@@ -74,8 +74,8 @@ function normalizeParenthetical(text: string): string {
 }
 
 export function parseSceneHeading(text: string): ParsedSceneHeading {
-  const upper = text.toUpperCase().trim()
-  if (!upper) {
+  const upper = text.toUpperCase().trimEnd()
+  if (!upper.trim()) {
     return { intExt: null, location: null, timeOfDay: null }
   }
 
@@ -89,7 +89,8 @@ export function parseSceneHeading(text: string): ParsedSceneHeading {
 
   return {
     intExt: match[1] ?? null,
-    location: match[2]?.trim() || null,
+    // Keep interior spaces; only trim the overall sides for stable parsing
+    location: match[2]?.replace(/^\s+/, '').replace(/\s+$/, '') || null,
     timeOfDay: match[3]?.trim() || null,
   }
 }
@@ -115,12 +116,13 @@ export function composeSceneHeading(meta: {
   timeOfDay?: string | null
 }): string {
   const intExt = (meta.intExt ?? 'INT.').trim().toUpperCase() || 'INT.'
-  const location = (meta.location ?? '').trim().toUpperCase()
-  const timeOfDay = (meta.timeOfDay ?? '').trim().toUpperCase()
+  // Do not trim location — trailing spaces must survive while typing.
+  const location = (meta.location ?? '').toUpperCase()
+  const timeOfDay = (meta.timeOfDay ?? '').toUpperCase()
 
   let heading = intExt
-  if (location) heading += ` ${location}`
-  if (timeOfDay) heading += ` - ${timeOfDay}`
+  if (location.length > 0) heading += ` ${location}`
+  if (timeOfDay.trim().length > 0) heading += ` - ${timeOfDay.trim()}`
   return heading
 }
 
