@@ -105,6 +105,7 @@ interface CommentThreadCardProps {
   isActive: boolean
   onActivate: () => void
   onResolve: () => void
+  onDelete: () => void
 }
 
 export function CommentThreadCard({
@@ -112,6 +113,7 @@ export function CommentThreadCard({
   isActive,
   onActivate,
   onResolve,
+  onDelete,
 }: CommentThreadCardProps) {
   return (
     <div
@@ -136,18 +138,32 @@ export function CommentThreadCard({
             {formatCommentTime(comment.createdAt)}
           </span>
         </div>
-        <button
-          type="button"
-          className="script-comment-resolve"
-          title="Resolve comment"
-          aria-label="Resolve comment"
-          onClick={(e) => {
-            e.stopPropagation()
-            onResolve()
-          }}
-        >
-          <Check size={16} strokeWidth={2.25} />
-        </button>
+        <div className="script-comment-tools">
+          <button
+            type="button"
+            className="script-comment-resolve"
+            title="Resolve comment"
+            aria-label="Resolve comment"
+            onClick={(e) => {
+              e.stopPropagation()
+              onResolve()
+            }}
+          >
+            <Check size={16} strokeWidth={2.25} />
+          </button>
+          <button
+            type="button"
+            className="script-comment-delete"
+            title="Delete comment"
+            aria-label="Delete comment"
+            onClick={(e) => {
+              e.stopPropagation()
+              onDelete()
+            }}
+          >
+            ×
+          </button>
+        </div>
       </div>
       <p className="script-comment-body">{comment.text}</p>
     </div>

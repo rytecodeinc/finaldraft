@@ -162,6 +162,7 @@ export function ScriptCommentsRail() {
                   ?.scrollIntoView({ behavior: 'smooth', block: 'center' })
               }}
               onResolve={() => deleteComment(comment.id)}
+              onDelete={() => deleteComment(comment.id)}
             />
           </div>
         )

@@ -107,7 +107,6 @@ export function ScriptEditor() {
       <SceneNavigator />
       <div className="script-canvas-shell">
         <FindBar />
-        <ElementTypeQuickBar />
         <div className="script-canvas">
           <div className="script-stage">
             <div className="script-stage-pages">
@@ -157,6 +156,7 @@ export function ScriptEditor() {
               })}
             </div>
 
+            <ElementTypeQuickBar />
             <ScriptCommentsRail />
           </div>
         </div>
