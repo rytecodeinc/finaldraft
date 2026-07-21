@@ -1,0 +1,95 @@
+:root {
+  /* Brand */
+  --font-brand: 'Syne', sans-serif;
+  --font-ui: 'Outfit', sans-serif;
+
+  /* Sizing */
+  --menubar-height: 36px;
+  --toolbar-height: 44px;
+  --statusbar-height: 28px;
+  --sidebar-width-collapsed: 52px;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+
+  /* Motion */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --duration-fast: 140ms;
+  --duration-normal: 220ms;
+  --duration-slow: 360ms;
+
+  /* Light theme — cool stone + film gold */
+  --bg-app: #e6e8ec;
+  --bg-chrome: #f4f5f7;
+  --bg-panel: #fafbfc;
+  --bg-elevated: #ffffff;
+  --bg-muted: #eceef2;
+  --bg-hover: rgba(18, 20, 26, 0.05);
+  --bg-active: rgba(18, 20, 26, 0.09);
+  --bg-editor: #f7f8fa;
+
+  --border-subtle: rgba(18, 20, 26, 0.08);
+  --border-default: rgba(18, 20, 26, 0.12);
+  --border-strong: rgba(18, 20, 26, 0.2);
+
+  --text-primary: #14161c;
+  --text-secondary: #4a5060;
+  --text-muted: #7a8294;
+  --text-inverse: #f7f8fa;
+
+  --accent: #c9922a;
+  --accent-hover: #b5821f;
+  --accent-muted: rgba(201, 146, 42, 0.14);
+  --accent-text: #8a6414;
+
+  --success: #2f7a55;
+  --warning: #b8860b;
+  --danger: #c4453a;
+
+  --shadow-sm: 0 1px 2px rgba(18, 20, 26, 0.06);
+  --shadow-md: 0 8px 24px rgba(18, 20, 26, 0.08);
+  --shadow-panel: 0 0 0 1px var(--border-subtle), var(--shadow-sm);
+
+  --scrollbar-thumb: rgba(18, 20, 26, 0.2);
+  --scrollbar-thumb-hover: rgba(18, 20, 26, 0.35);
+
+  color-scheme: light;
+}
+
+[data-theme='dark'] {
+  --bg-app: #0c0d11;
+  --bg-chrome: #12141a;
+  --bg-panel: #161922;
+  --bg-elevated: #1c2030;
+  --bg-muted: #1a1e2a;
+  --bg-hover: rgba(247, 248, 250, 0.05);
+  --bg-active: rgba(247, 248, 250, 0.09);
+  --bg-editor: #10131a;
+
+  --border-subtle: rgba(247, 248, 250, 0.06);
+  --border-default: rgba(247, 248, 250, 0.1);
+  --border-strong: rgba(247, 248, 250, 0.18);
+
+  --text-primary: #eef0f4;
+  --text-secondary: #a8b0c0;
+  --text-muted: #6e7789;
+  --text-inverse: #12141a;
+
+  --accent: #e8a838;
+  --accent-hover: #f0b84a;
+  --accent-muted: rgba(232, 168, 56, 0.16);
+  --accent-text: #f0c56a;
+
+  --success: #4caf7a;
+  --warning: #e0a84a;
+  --danger: #e06a5e;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --shadow-md: 0 12px 32px rgba(0, 0, 0, 0.45);
+  --shadow-panel: 0 0 0 1px var(--border-subtle), var(--shadow-sm);
+
+  --scrollbar-thumb: rgba(247, 248, 250, 0.18);
+  --scrollbar-thumb-hover: rgba(247, 248, 250, 0.3);
+
+  color-scheme: dark;
+}
