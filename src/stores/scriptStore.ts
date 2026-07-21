@@ -10,6 +10,7 @@ import {
   findSceneForElement,
   formatElementText,
   parseSceneHeading,
+  pruneBlankElements,
 } from '@/screenplay/elementRules'
 import { findInScript, type FindMatch, type FindTypeFilter } from '@/screenplay/findScript'
 import { loadActiveScript, saveActiveScript } from '@/screenplay/idb'
@@ -74,6 +75,7 @@ interface ScriptState {
   requestFocus: (id: string, caret?: CaretPosition | null) => void
   clearFocusRequest: () => void
   rememberCaret: (id: string, caret: CaretPosition) => void
+  pruneBlankElements: (keepId?: string | null) => void
   updateElementText: (id: string, text: string) => void
   setElementType: (id: string, type: ElementType) => void
   cycleType: (id: string, direction?: 1 | -1) => void
@@ -304,6 +306,34 @@ export const useScriptStore = create<ScriptState>((set, get) => ({
     set({ focusCaret: caret })
   },
 
+  pruneBlankElements: (keepId) => {
+    const { doc, selectedId, focusRequestId, commentDraft } = get()
+    const keep = keepId === undefined ? selectedId : keepId
+    const elements = pruneBlankElements(doc.elements, keep)
+    if (
+      elements.length === doc.elements.length &&
+      elements.every((el, index) => el.id === doc.elements[index]?.id)
+    ) {
+      return
+    }
+
+    const ids = new Set(elements.map((el) => el.id))
+    set({
+      doc: {
+        ...doc,
+        elements,
+        comments: doc.comments.filter((comment) => ids.has(comment.elementId)),
+        updatedAt: Date.now(),
+      },
+      selectedId: selectedId && ids.has(selectedId) ? selectedId : null,
+      focusRequestId:
+        focusRequestId && ids.has(focusRequestId) ? focusRequestId : null,
+      commentDraft:
+        commentDraft && ids.has(commentDraft.elementId) ? commentDraft : null,
+    })
+    scheduleAutosave(get, set)
+  },
+
   updateElementText: (id, text) => {
     pushHistory(get, set)
     set((state) => ({
@@ -360,8 +390,16 @@ export const useScriptStore = create<ScriptState>((set, get) => ({
       const index = state.doc.elements.findIndex((el) => el.id === id)
       const elements = [...state.doc.elements]
       elements.splice(index + 1, 0, created)
+      // Drop blank placeholders between content; keep the new writing line.
+      const pruned = pruneBlankElements(elements, created.id)
+      const ids = new Set(pruned.map((el) => el.id))
       return {
-        doc: { ...state.doc, elements, updatedAt: Date.now() },
+        doc: {
+          ...state.doc,
+          elements: pruned,
+          comments: state.doc.comments.filter((comment) => ids.has(comment.elementId)),
+          updatedAt: Date.now(),
+        },
         selectedId: created.id,
         focusRequestId: created.id,
       }
@@ -379,7 +417,8 @@ export const useScriptStore = create<ScriptState>((set, get) => ({
       get().updateElementText(id, formatted)
     }
 
-    // Enter always creates the next logical element. Tab cycles types.
+    // Don't leave an empty current line behind when moving on.
+    // insertAfter will prune blanks except the new element.
     return get().insertAfter(id, ENTER_NEXT_TYPE[element.type])
   },
 
@@ -500,9 +539,12 @@ export const useScriptStore = create<ScriptState>((set, get) => ({
   },
 
   saveNow: async () => {
+    // Drop blank placeholders between content; keep the active writing line in-memory.
+    get().pruneBlankElements(get().selectedId)
     const { doc } = get()
     set({ saveStatus: 'saving' })
     try {
+      // normalizeScriptDocument strips all blanks from what is persisted.
       await saveActiveScript(doc)
       set({ saveStatus: 'saved', dirty: false })
     } catch {

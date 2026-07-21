@@ -23,6 +23,29 @@ export function createElement(
   return { id: createElementId(), type, text }
 }
 
+/** True when the element has no real screenplay content. */
+export function isBlankElement(element: ScreenplayElement): boolean {
+  const text = element.text.replace(/\u00a0/g, ' ').trim()
+  if (!text) return true
+  if (element.type === 'parenthetical' && text === '()') return true
+  return false
+}
+
+/**
+ * Drop blank placeholder rows. Optionally keep one id (the active writing line).
+ * Always retains at least one element so the editor is never empty.
+ */
+export function pruneBlankElements(
+  elements: ScreenplayElement[],
+  keepId?: string | null,
+): ScreenplayElement[] {
+  const kept = elements.filter((el) => el.id === keepId || !isBlankElement(el))
+  if (kept.length > 0) return kept
+  if (elements.length === 0) return [createElement('action', '')]
+  const fallback = elements.find((el) => el.id === keepId) ?? elements[0]!
+  return [{ ...fallback, text: fallback.type === 'parenthetical' ? '' : fallback.text.trim() }]
+}
+
 export function formatElementText(type: ElementType, text: string): string {
   const trimmed = text.replace(/\r\n/g, '\n')
 

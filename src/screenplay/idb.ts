@@ -1,4 +1,5 @@
 import { createDefaultTitlePage, type ScriptDocument, type TitlePageInfo } from './types'
+import { pruneBlankElements } from './elementRules'
 import { ACTIVE_SCRIPT_KEY, createSampleScript } from './sampleScript'
 
 const DB_NAME = 'scenedesk'
@@ -49,20 +50,26 @@ export function normalizeScriptDocument(
     title,
   }
 
+  const rawElements =
+    Array.isArray(raw.elements) && raw.elements.length > 0
+      ? raw.elements
+      : sample.elements
+  const elements = pruneBlankElements(rawElements)
+  const elementIds = new Set(elements.map((el) => el.id))
+
   return {
     id: ACTIVE_SCRIPT_KEY,
     title,
     format: 'feature',
     titlePage,
-    elements:
-      Array.isArray(raw.elements) && raw.elements.length > 0
-        ? raw.elements
-        : sample.elements,
+    elements,
     comments: Array.isArray(raw.comments)
-      ? raw.comments.map((comment) => ({
-          ...comment,
-          resolved: Boolean(comment.resolved),
-        }))
+      ? raw.comments
+          .map((comment) => ({
+            ...comment,
+            resolved: Boolean(comment.resolved),
+          }))
+          .filter((comment) => elementIds.has(comment.elementId))
       : [],
     createdAt: raw.createdAt ?? sample.createdAt,
     updatedAt: raw.updatedAt ?? Date.now(),

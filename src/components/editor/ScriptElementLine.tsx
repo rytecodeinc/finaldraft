@@ -47,6 +47,7 @@ export function ScriptElementLine({
   const setElementType = useScriptStore((s) => s.setElementType)
   const clearFocusRequest = useScriptStore((s) => s.clearFocusRequest)
   const rememberCaret = useScriptStore((s) => s.rememberCaret)
+  const pruneBlankElements = useScriptStore((s) => s.pruneBlankElements)
   const focusCaret = useScriptStore((s) =>
     s.focusRequestId === element.id ? s.focusCaret : null,
   )
@@ -195,7 +196,11 @@ export function ScriptElementLine({
     if (formatted !== element.text) {
       updateElementText(element.id, formatted)
     }
-  }, [element.id, element.text, element.type, updateElementText])
+    // Remove blank placeholders when leaving a line (keep other focused line).
+    window.requestAnimationFrame(() => {
+      pruneBlankElements(null)
+    })
+  }, [element.id, element.text, element.type, pruneBlankElements, updateElementText])
 
   const onKeyDown = useCallback(
     (event: ReactKeyboardEvent<HTMLTextAreaElement | HTMLInputElement>) => {
