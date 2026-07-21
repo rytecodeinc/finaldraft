@@ -67,21 +67,25 @@ export function ScriptElementLine({
     return getSmartTypeSuggestions(element.type, element.text, elements, element.id)
   }, [element.id, element.text, element.type, elements])
 
+  const cyclingTypeRef = useRef(false)
+
   useLayoutEffect(() => {
     if (!isSingleLine && textareaRef.current) {
       autoResize(textareaRef.current)
     }
   }, [element.text, element.type, isSingleLine])
 
-  useEffect(() => {
+  // Restore focus after Tab type-cycles remount input ↔ textarea.
+  useLayoutEffect(() => {
     if (!shouldFocus) return
     const node = isSingleLine ? inputRef.current : textareaRef.current
     if (!node) return
     node.focus()
     const len = node.value.length
     node.setSelectionRange(len, len)
+    cyclingTypeRef.current = false
     clearFocusRequest()
-  }, [shouldFocus, clearFocusRequest, isSingleLine])
+  }, [shouldFocus, clearFocusRequest, isSingleLine, element.type])
 
   useEffect(() => {
     setActiveSuggestion(0)
@@ -135,6 +139,8 @@ export function ScriptElementLine({
   )
 
   const onBlur = useCallback(() => {
+    // Ignore blur caused by Tab remounting input/textarea during type cycle.
+    if (cyclingTypeRef.current) return
     setMenuOpen(false)
     const formatted = formatElementText(element.type, element.text)
     if (formatted !== element.text) {
@@ -200,6 +206,7 @@ export function ScriptElementLine({
           return
         }
         if (action.kind === 'cycle') {
+          cyclingTypeRef.current = true
           setMenuOpen(false)
           cycleType(element.id, action.direction)
           return

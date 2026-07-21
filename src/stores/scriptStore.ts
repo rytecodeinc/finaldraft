@@ -219,7 +219,10 @@ export const useScriptStore = create<ScriptState>((set, get) => ({
   cycleType: (id, direction = 1) => {
     const element = get().doc.elements.find((el) => el.id === id)
     if (!element) return
-    get().setElementType(id, cycleTabElementType(element.type, direction))
+    const nextType = cycleTabElementType(element.type, direction)
+    get().setElementType(id, nextType)
+    // Keep keyboard focus on the element after input/textarea remounts.
+    set({ selectedId: id, focusRequestId: id })
   },
 
   insertAfter: (id, type, text = '') => {
