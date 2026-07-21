@@ -1,4 +1,5 @@
 import {
+  MessagesSquare,
   PanelBottom,
   PanelLeft,
   PanelRight,
@@ -94,6 +95,9 @@ export function Toolbar() {
             <Search size={16} strokeWidth={1.75} />
           </IconButton>
         ) : null}
+        <IconButton label="Comments" disabled>
+          <MessagesSquare size={16} strokeWidth={1.75} />
+        </IconButton>
         <IconButton
           label="Toggle bottom panel"
           active={bottomPanelOpen}

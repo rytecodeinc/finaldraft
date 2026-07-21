@@ -94,12 +94,12 @@ export function ScriptCommentsRail() {
       })
     }
 
-    if (draft && elementIds.has(draft.elementId)) {
+    if (draft && elementIds.has(draft.elementId) && tops[draft.elementId] != null) {
       list.push({
         key: `draft:${draft.elementId}`,
         elementId: draft.elementId,
         kind: 'draft',
-        preferredTop: tops[draft.elementId] ?? 0,
+        preferredTop: tops[draft.elementId]!,
       })
     }
 

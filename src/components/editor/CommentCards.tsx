@@ -48,7 +48,9 @@ export function CommentComposeCard({
 
   useEffect(() => {
     if (!autoFocus) return
-    inputRef.current?.focus()
+    // preventScroll avoids jumping the script canvas when the compose
+    // card mounts before its final anchored position is measured.
+    inputRef.current?.focus({ preventScroll: true })
   }, [autoFocus])
 
   const canSubmit = text.trim().length > 0

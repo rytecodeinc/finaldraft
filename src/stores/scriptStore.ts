@@ -565,7 +565,6 @@ export const useScriptStore = create<ScriptState>((set, get) => ({
       commentDraft: { elementId, text: '' },
       activeCommentId: null,
     })
-    scrollElementIntoView(elementId)
   },
 
   setCommentDraftText: (text) => {
