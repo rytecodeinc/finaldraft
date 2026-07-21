@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { ElementTypeQuickBar } from '@/components/editor/ElementTypeQuickBar'
 import { SceneNavigator } from '@/components/editor/SceneNavigator'
 import { ScriptElementLine } from '@/components/editor/ScriptElementLine'
 import { collectCharacterNames } from '@/screenplay/elementRules'
@@ -74,44 +75,47 @@ export function ScriptEditor() {
   return (
     <div className="script-workspace">
       <SceneNavigator />
-      <div className="script-canvas">
-        {pages.map((page, pageIndex) => (
-          <section
-            key={`page-${page.pageNumber}`}
-            className="script-page script-page--live"
-            aria-label={`Page ${page.pageNumber}`}
-          >
-            <div className="script-page-body">
-              {pageIndex === 0 ? (
-                <input
-                  className="script-title-input"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  aria-label="Screenplay title"
-                  placeholder="Untitled Screenplay"
-                />
-              ) : (
-                <div className="script-page-continued" aria-hidden>
-                  {title || 'Untitled Screenplay'} — continued
-                </div>
-              )}
-
-              <div className="script-elements">
-                {page.elements.map((element) => (
-                  <ScriptElementLine
-                    key={element.id}
-                    element={element}
-                    isSelected={selectedId === element.id}
-                    shouldFocus={focusRequestId === element.id}
-                    characterNames={characters}
+      <div className="script-canvas-shell">
+        <ElementTypeQuickBar />
+        <div className="script-canvas">
+          {pages.map((page, pageIndex) => (
+            <section
+              key={`page-${page.pageNumber}`}
+              className="script-page script-page--live"
+              aria-label={`Page ${page.pageNumber}`}
+            >
+              <div className="script-page-body">
+                {pageIndex === 0 ? (
+                  <input
+                    className="script-title-input"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    aria-label="Screenplay title"
+                    placeholder="Untitled Screenplay"
                   />
-                ))}
-              </div>
-            </div>
+                ) : (
+                  <div className="script-page-continued" aria-hidden>
+                    {title || 'Untitled Screenplay'} — continued
+                  </div>
+                )}
 
-            <footer className="script-page-number">{page.pageNumber}.</footer>
-          </section>
-        ))}
+                <div className="script-elements">
+                  {page.elements.map((element) => (
+                    <ScriptElementLine
+                      key={element.id}
+                      element={element}
+                      isSelected={selectedId === element.id}
+                      shouldFocus={focusRequestId === element.id}
+                      characterNames={characters}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              <footer className="script-page-number">{page.pageNumber}.</footer>
+            </section>
+          ))}
+        </div>
       </div>
     </div>
   )
