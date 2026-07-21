@@ -44,16 +44,8 @@ export function formatElementText(type: ElementType, text: string): string {
 
 function normalizeSceneHeading(text: string): string {
   const upper = text.toUpperCase().replace(/\s+/g, ' ').trim()
-  if (!upper) return ''
-
-  // Light auto-prefix when writer starts with a bare location
-  if (
-    !/^(INT\.|EXT\.|INT\/EXT\.|I\/E\.|EST\.)/.test(upper) &&
-    upper.length > 0 &&
-    !upper.includes('.')
-  ) {
-    return `INT. ${upper}`
-  }
+  // Do not auto-prefix INT. — Tab type-cycling must not force the INT. option.
+  // Writers pick INT./EXT. via SmartType (Enter) or by typing an abbrev + Tab.
   return upper
 }
 

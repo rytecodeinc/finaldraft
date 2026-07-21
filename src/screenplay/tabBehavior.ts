@@ -9,7 +9,8 @@ export type TabAction =
 
 /**
  * Tab cycles element types. SmartType options are confirmed with Enter, not Tab.
- * Scene headings still get field-advance (INT → location → time) before cycling.
+ * Scene headings only field-advance when there is a real incomplete abbrev or
+ * location → time step — not when empty or already on a bare INT./EXT.
  */
 export function resolveTabAction(options: {
   elementType: ElementType
@@ -36,8 +37,11 @@ export function resolveTabAction(options: {
 
 /**
  * Advance / complete scene heading sections with Tab:
- * "INT" → "INT. " → "INT. COFFEE SHOP - " → complete time
+ * "INT" → "INT. " → (type after location) → "INT. COFFEE SHOP - "
  * Returns null when Tab should fall through to type cycling.
+ *
+ * Empty and bare "INT." / "EXT." intentionally return null so Tab keeps
+ * cycling element types instead of trapping on the INT. SmartType option.
  */
 export function advanceSceneHeadingField(
   text: string,
@@ -46,18 +50,23 @@ export function advanceSceneHeadingField(
   const trimmed = text.trim()
   const upper = trimmed.toUpperCase()
 
-  // 1) Abbreviation completion: INT / EXT / EST / I/E → dotted form + space
+  // Empty → cycle types (do not force INT.)
+  if (!trimmed) {
+    return null
+  }
+
+  // Bare INT./EXT. (optional trailing space) → cycle types
+  if (/^(INT\.|EXT\.|INT\/EXT\.|I\/E\.|EST\.)\s*$/i.test(upper)) {
+    return null
+  }
+
+  // 1) Incomplete abbreviation only: INT / EXT / EST / I/E → dotted form + space
   const abbrev = completeIntExtAbbreviation(upper)
   if (abbrev) {
     return `${abbrev} `
   }
 
-  // 2) "INT." only → ensure trailing space (location field)
-  if (/^(INT\.|EXT\.|INT\/EXT\.|I\/E\.|EST\.)$/i.test(upper)) {
-    return `${upper} `
-  }
-
-  // 3) "INT. LOCATION" without dash → move to time-of-day field
+  // 2) "INT. LOCATION" without dash → move to time-of-day field
   if (/^(INT\.|EXT\.|INT\/EXT\.|I\/E\.|EST\.)\s+\S+/i.test(trimmed) && !/[-–—]/.test(trimmed)) {
     const match = trimmed.match(/^(INT\.|EXT\.|INT\/EXT\.|I\/E\.|EST\.)\s+(.+)$/i)
     if (match) {
@@ -67,7 +76,7 @@ export function advanceSceneHeadingField(
     }
   }
 
-  // 4) "INT. LOCATION - partialTime" → autocomplete time when possible
+  // 3) "INT. LOCATION - partialTime" → autocomplete time when possible
   const timed = trimmed.match(
     /^(INT\.|EXT\.|INT\/EXT\.|I\/E\.|EST\.)\s+(.+?)\s*[-–—]\s*(.*)$/i,
   )
@@ -78,7 +87,8 @@ export function advanceSceneHeadingField(
     const times = collectTimesOfDay(elements)
 
     if (!timeQuery) {
-      return `${intExt} ${location} - `
+      // Already at time field with no query — cycle rather than re-applying the same text
+      return null
     }
 
     const hit =
@@ -93,7 +103,7 @@ export function advanceSceneHeadingField(
     return null
   }
 
-  // 5) "INT COFFEE SHOP" (missing dots) → normalize and jump to time
+  // 4) "INT COFFEE SHOP" (missing dots) → normalize and jump to time
   const loose = trimmed.match(/^(INT|EXT|EST|I\/E|INT\/EXT)\s+(.+)$/i)
   if (loose) {
     const map: Record<string, string> = {
@@ -114,26 +124,21 @@ export function advanceSceneHeadingField(
 }
 
 function completeIntExtAbbreviation(upper: string): string | null {
+  // Only incomplete tokens — already-dotted INT./EXT. must cycle types.
   if (/[\s\-–—]/.test(upper)) return null
+  if (/\.$/.test(upper)) return null
 
   const table: Record<string, string> = {
     I: 'INT.',
     IN: 'INT.',
     INT: 'INT.',
-    'INT.': 'INT.',
     E: 'EXT.',
     EX: 'EXT.',
     EXT: 'EXT.',
-    'EXT.': 'EXT.',
     EST: 'EST.',
-    'EST.': 'EST.',
     'I/E': 'INT/EXT.',
-    'I/E.': 'INT/EXT.',
     'INT/EXT': 'INT/EXT.',
-    'INT/EXT.': 'INT/EXT.',
   }
 
-  const hit = table[upper]
-  if (!hit) return null
-  return hit
+  return table[upper] ?? null
 }

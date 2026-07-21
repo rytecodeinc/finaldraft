@@ -273,10 +273,14 @@ export const useScriptStore = create<ScriptState>((set, get) => ({
         ...state.doc,
         elements: state.doc.elements.map((el) => {
           if (el.id !== id) return el
+          // Drop empty parenthetical marker so Tab-cycling onto scene heading
+          // does not inherit "()" (and previously "INT. ()").
+          const raw =
+            el.type === 'parenthetical' && el.text.trim() === '()' ? '' : el.text
           return {
             ...el,
             type,
-            text: formatElementText(type, el.text),
+            text: formatElementText(type, raw),
           }
         }),
         updatedAt: Date.now(),
