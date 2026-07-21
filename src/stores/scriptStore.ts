@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import {
   collectCharacterNames,
+  composeSceneHeading,
   createElement,
   cycleElementType,
   ENTER_NEXT_TYPE,
@@ -8,6 +9,7 @@ import {
   extractScenes,
   findSceneForElement,
   formatElementText,
+  parseSceneHeading,
 } from '@/screenplay/elementRules'
 import { loadActiveScript, saveActiveScript } from '@/screenplay/idb'
 import { createSampleScript } from '@/screenplay/sampleScript'
@@ -22,6 +24,17 @@ import type {
 const MAX_HISTORY = 80
 const AUTOSAVE_MS = 700
 
+interface HistorySnapshot {
+  title: string
+  elements: ScreenplayElement[]
+}
+
+export interface SceneMetaPatch {
+  intExt?: string | null
+  location?: string | null
+  timeOfDay?: string | null
+}
+
 interface ScriptState {
   doc: ScriptDocument
   selectedId: string | null
@@ -29,8 +42,8 @@ interface ScriptState {
   saveStatus: SaveStatus
   hydrated: boolean
   dirty: boolean
-  undoStack: ScreenplayElement[][]
-  redoStack: ScreenplayElement[][]
+  undoStack: HistorySnapshot[]
+  redoStack: HistorySnapshot[]
   hydrate: () => Promise<void>
   selectElement: (id: string | null) => void
   requestFocus: (id: string) => void
@@ -42,6 +55,7 @@ interface ScriptState {
   handleEnter: (id: string) => string | null
   deleteElement: (id: string) => string | null
   addScene: () => string
+  updateSceneMeta: (sceneElementId: string, patch: SceneMetaPatch) => void
   undo: () => void
   redo: () => void
   saveNow: () => Promise<void>
@@ -59,6 +73,17 @@ function cloneElements(elements: ScreenplayElement[]): ScreenplayElement[] {
   return elements.map((el) => ({ ...el }))
 }
 
+function snapshotDoc(doc: ScriptDocument): HistorySnapshot {
+  return {
+    title: doc.title,
+    elements: cloneElements(doc.elements),
+  }
+}
+
+function snapshotsEqual(a: HistorySnapshot, b: HistorySnapshot): boolean {
+  return a.title === b.title && JSON.stringify(a.elements) === JSON.stringify(b.elements)
+}
+
 function scheduleAutosave(get: () => ScriptState, set: (partial: Partial<ScriptState>) => void) {
   if (autosaveTimer) clearTimeout(autosaveTimer)
   autosaveTimer = setTimeout(() => {
@@ -67,14 +92,14 @@ function scheduleAutosave(get: () => ScriptState, set: (partial: Partial<ScriptS
   set({ dirty: true, saveStatus: 'dirty' })
 }
 
-/** Snapshot current elements before a mutation. Coalesces rapid typing into one undo step. */
+/** Snapshot current doc before a mutation. Coalesces rapid typing into one undo step. */
 function pushHistory(get: () => ScriptState, set: (partial: Partial<ScriptState>) => void) {
   if (historyLocked) return
   historyLocked = true
   const { doc, undoStack } = get()
-  const snapshot = cloneElements(doc.elements)
+  const snapshot = snapshotDoc(doc)
   const last = undoStack[undoStack.length - 1]
-  if (!last || JSON.stringify(last) !== JSON.stringify(snapshot)) {
+  if (!last || !snapshotsEqual(last, snapshot)) {
     set({
       undoStack: [...undoStack, snapshot].slice(-MAX_HISTORY),
       redoStack: [],
@@ -191,13 +216,11 @@ export const useScriptStore = create<ScriptState>((set, get) => ({
     const element = get().doc.elements.find((el) => el.id === id)
     if (!element) return null
 
-    // Format current element on leave
     const formatted = formatElementText(element.type, element.text)
     if (formatted !== element.text) {
       get().updateElementText(id, formatted)
     }
 
-    // Empty element + Enter → cycle type instead of inserting (except keep scene flow)
     if (element.text.trim() === '' && element.type !== 'sceneHeading') {
       get().cycleType(id, 1)
       return id
@@ -245,14 +268,34 @@ export const useScriptStore = create<ScriptState>((set, get) => ({
     return heading.id
   },
 
+  updateSceneMeta: (sceneElementId, patch) => {
+    const element = get().doc.elements.find((el) => el.id === sceneElementId)
+    if (!element || element.type !== 'sceneHeading') return
+
+    const current = parseSceneHeading(element.text)
+    const nextHeading = composeSceneHeading({
+      intExt: patch.intExt !== undefined ? patch.intExt : current.intExt,
+      location: patch.location !== undefined ? patch.location : current.location,
+      timeOfDay: patch.timeOfDay !== undefined ? patch.timeOfDay : current.timeOfDay,
+    })
+
+    if (nextHeading === element.text) return
+    get().updateElementText(sceneElementId, nextHeading)
+  },
+
   undo: () => {
     const { undoStack, doc, redoStack } = get()
     if (undoStack.length === 0) return
     const previous = undoStack[undoStack.length - 1]!
     set({
       undoStack: undoStack.slice(0, -1),
-      redoStack: [...redoStack, cloneElements(doc.elements)],
-      doc: { ...doc, elements: cloneElements(previous), updatedAt: Date.now() },
+      redoStack: [...redoStack, snapshotDoc(doc)],
+      doc: {
+        ...doc,
+        title: previous.title,
+        elements: cloneElements(previous.elements),
+        updatedAt: Date.now(),
+      },
     })
     scheduleAutosave(get, set)
   },
@@ -263,8 +306,13 @@ export const useScriptStore = create<ScriptState>((set, get) => ({
     const next = redoStack[redoStack.length - 1]!
     set({
       redoStack: redoStack.slice(0, -1),
-      undoStack: [...undoStack, cloneElements(doc.elements)],
-      doc: { ...doc, elements: cloneElements(next), updatedAt: Date.now() },
+      undoStack: [...undoStack, snapshotDoc(doc)],
+      doc: {
+        ...doc,
+        title: next.title,
+        elements: cloneElements(next.elements),
+        updatedAt: Date.now(),
+      },
     })
     scheduleAutosave(get, set)
   },
@@ -281,6 +329,7 @@ export const useScriptStore = create<ScriptState>((set, get) => ({
   },
 
   setTitle: (title) => {
+    pushHistory(get, set)
     set((state) => ({
       doc: { ...state.doc, title, updatedAt: Date.now() },
     }))

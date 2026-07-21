@@ -94,6 +94,37 @@ export function parseSceneHeading(text: string): ParsedSceneHeading {
   }
 }
 
+export const INT_EXT_OPTIONS = ['INT.', 'EXT.', 'INT/EXT.', 'I/E.', 'EST.'] as const
+
+export const TIME_OF_DAY_OPTIONS = [
+  'DAY',
+  'NIGHT',
+  'DAWN',
+  'DUSK',
+  'MORNING',
+  'AFTERNOON',
+  'EVENING',
+  'CONTINUOUS',
+  'LATER',
+  'MOMENTS LATER',
+] as const
+
+export function composeSceneHeading(meta: {
+  intExt?: string | null
+  location?: string | null
+  timeOfDay?: string | null
+}): string {
+  const intExt = (meta.intExt ?? 'INT.').trim().toUpperCase() || 'INT.'
+  const location = (meta.location ?? '').trim().toUpperCase()
+  const timeOfDay = (meta.timeOfDay ?? '').trim().toUpperCase()
+
+  let heading = intExt
+  if (location) heading += ` ${location}`
+  if (timeOfDay) heading += ` - ${timeOfDay}`
+  return heading
+}
+
+
 export function extractScenes(elements: ScreenplayElement[]): SceneInfo[] {
   const scenes: SceneInfo[] = []
   let number = 0

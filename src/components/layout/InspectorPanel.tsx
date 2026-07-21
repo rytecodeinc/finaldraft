@@ -5,6 +5,8 @@ import { Resizer } from '@/components/ui/Resizer'
 import {
   estimatePageCount,
   findSceneForElement,
+  INT_EXT_OPTIONS,
+  TIME_OF_DAY_OPTIONS,
 } from '@/screenplay/elementRules'
 import { ELEMENT_LABELS, ELEMENT_TYPES } from '@/screenplay/types'
 import { useLayoutStore } from '@/stores/layoutStore'
@@ -16,9 +18,12 @@ export function InspectorPanel() {
   const setInspectorOpen = useLayoutStore((s) => s.setInspectorOpen)
   const setInspectorWidth = useLayoutStore((s) => s.setInspectorWidth)
 
+  const title = useScriptStore((s) => s.doc.title)
+  const setTitle = useScriptStore((s) => s.setTitle)
   const elements = useScriptStore((s) => s.doc.elements)
   const selectedId = useScriptStore((s) => s.selectedId)
   const setElementType = useScriptStore((s) => s.setElementType)
+  const updateSceneMeta = useScriptStore((s) => s.updateSceneMeta)
 
   const selected =
     selectedId == null
@@ -26,6 +31,20 @@ export function InspectorPanel() {
       : (elements.find((el) => el.id === selectedId) ?? null)
   const scene = findSceneForElement(elements, selectedId)
   const pageEstimate = estimatePageCount(elements)
+
+  const intExtValue = scene?.intExt ?? 'INT.'
+  const intExtOptions = INT_EXT_OPTIONS.includes(
+    intExtValue as (typeof INT_EXT_OPTIONS)[number],
+  )
+    ? INT_EXT_OPTIONS
+    : ([intExtValue, ...INT_EXT_OPTIONS] as string[])
+
+  const timeValue = scene?.timeOfDay ?? ''
+  const timeOptions =
+    timeValue &&
+    !TIME_OF_DAY_OPTIONS.includes(timeValue as (typeof TIME_OF_DAY_OPTIONS)[number])
+      ? ([timeValue, ...TIME_OF_DAY_OPTIONS] as string[])
+      : TIME_OF_DAY_OPTIONS
 
   if (!inspectorOpen) return null
 
@@ -53,6 +72,20 @@ export function InspectorPanel() {
       />
       <div className="panel-body">
         <section className="inspector-section">
+          <h3>Screenplay</h3>
+          <div className="inspector-field">
+            <label htmlFor="inspector-title">Title</label>
+            <input
+              id="inspector-title"
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Untitled Screenplay"
+            />
+          </div>
+        </section>
+
+        <section className="inspector-section">
           <h3>Selection</h3>
           {selected ? (
             <>
@@ -68,7 +101,7 @@ export function InspectorPanel() {
                 <span>Scene #</span>
                 <span>{scene?.number ?? '—'}</span>
               </div>
-              <div className="inspector-type-picker">
+              <div className="inspector-field">
                 <label htmlFor="inspector-type">Type</label>
                 <select
                   id="inspector-type"
@@ -97,18 +130,55 @@ export function InspectorPanel() {
           <h3>Scene Meta</h3>
           {scene ? (
             <>
-              <div className="inspector-row">
-                <span>INT / EXT</span>
-                <span>{scene.intExt ?? '—'}</span>
+              <div className="inspector-field">
+                <label htmlFor="inspector-int-ext">INT / EXT</label>
+                <select
+                  id="inspector-int-ext"
+                  value={intExtValue}
+                  onChange={(e) =>
+                    updateSceneMeta(scene.id, { intExt: e.target.value })
+                  }
+                >
+                  {intExtOptions.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
               </div>
-              <div className="inspector-row">
-                <span>Time of day</span>
-                <span>{scene.timeOfDay ?? '—'}</span>
+
+              <div className="inspector-field">
+                <label htmlFor="inspector-location">Location</label>
+                <input
+                  id="inspector-location"
+                  type="text"
+                  value={scene.location ?? ''}
+                  onChange={(e) =>
+                    updateSceneMeta(scene.id, { location: e.target.value })
+                  }
+                  placeholder="LOCATION"
+                />
               </div>
-              <div className="inspector-row">
-                <span>Location</span>
-                <span>{scene.location ?? '—'}</span>
+
+              <div className="inspector-field">
+                <label htmlFor="inspector-time">Time of day</label>
+                <input
+                  id="inspector-time"
+                  type="text"
+                  list="inspector-time-options"
+                  value={timeValue}
+                  onChange={(e) =>
+                    updateSceneMeta(scene.id, { timeOfDay: e.target.value })
+                  }
+                  placeholder="DAY"
+                />
+                <datalist id="inspector-time-options">
+                  {timeOptions.map((option) => (
+                    <option key={option} value={option} />
+                  ))}
+                </datalist>
               </div>
+
               <div className="inspector-row">
                 <span>Heading</span>
                 <span className="inspector-heading">{scene.heading}</span>
@@ -149,7 +219,7 @@ export function InspectorPanel() {
               color: 'var(--text-muted)',
             }}
           >
-            Tab cycles element type. Enter creates the next logical element.
+            Title and scene meta edits are undoable with the script history.
           </p>
         </section>
       </div>
