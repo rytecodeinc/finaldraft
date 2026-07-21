@@ -14,11 +14,11 @@ import { IconButton } from '@/components/ui/IconButton'
 import {
   characterPath,
   getNavItemByPath,
-  getPrimaryCreateAction,
+  getPrimaryAction,
   isScriptPath,
   parseProjectDetailPath,
   parseProjectPath,
-  primaryCreateLabel,
+  primaryActionLabel,
   projectDetailPath,
   projectPath,
 } from '@/navigation/navItems'
@@ -35,6 +35,7 @@ export function Toolbar() {
   const projectName = useScriptStore((s) => s.project.name)
   const projectId = useScriptStore((s) => s.project.id)
   const projects = useScriptStore((s) => s.projects)
+  const directorySelection = useScriptStore((s) => s.directorySelection)
 
   const sidebarOpen = useLayoutStore((s) => s.sidebarOpen)
   const inspectorOpen = useLayoutStore((s) => s.inspectorOpen)
@@ -48,6 +49,7 @@ export function Toolbar() {
   const saveStatus = useScriptStore((s) => s.saveStatus)
   const dirty = useScriptStore((s) => s.dirty)
   const saveNow = useScriptStore((s) => s.saveNow)
+  const saveProjectNow = useScriptStore((s) => s.saveProjectNow)
   const undo = useScriptStore((s) => s.undo)
   const redo = useScriptStore((s) => s.redo)
   const addScene = useScriptStore((s) => s.addScene)
@@ -59,8 +61,13 @@ export function Toolbar() {
   const canUndo = useScriptStore((s) => s.undoStack.length > 0)
   const canRedo = useScriptStore((s) => s.redoStack.length > 0)
 
-  const createAction = getPrimaryCreateAction(location.pathname)
-  const createLabel = primaryCreateLabel(createAction)
+  const primaryAction = getPrimaryAction(location.pathname, {
+    directoryKind: directorySelection?.kind ?? null,
+  })
+  const primaryLabel =
+    primaryAction.mode === 'save' && saveStatus === 'saving'
+      ? 'Saving…'
+      : primaryActionLabel(primaryAction)
 
   const saveLabel =
     saveStatus === 'saving'
@@ -83,8 +90,23 @@ export function Toolbar() {
     return `${projectName} > ${current?.label ?? 'Story'}`
   })()
 
-  const handlePrimaryCreate = () => {
-    switch (createAction) {
+  const handlePrimaryAction = () => {
+    if (primaryAction.mode === 'save') {
+      switch (primaryAction.target) {
+        case 'project':
+          void saveProjectNow(projectDetailRoute?.projectId)
+          return
+        case 'character':
+        case 'location':
+        case 'scene':
+        case 'note':
+        default:
+          void saveNow()
+          return
+      }
+    }
+
+    switch (primaryAction.target) {
       case 'project': {
         void (async () => {
           const id = await createProject()
@@ -118,13 +140,6 @@ export function Toolbar() {
           return
         }
         addScene()
-        if (projectRoute?.view === 'outline') {
-          // Stay on outline; selection updates via directorySelection.
-          return
-        }
-        if (!onScript) {
-          navigate(projectPath(projectId, 'script'))
-        }
       }
     }
   }
@@ -200,8 +215,12 @@ export function Toolbar() {
         >
           <PanelRight size={16} strokeWidth={1.75} />
         </IconButton>
-        <Button variant="primary" onClick={handlePrimaryCreate}>
-          {createLabel}
+        <Button
+          variant="primary"
+          onClick={handlePrimaryAction}
+          disabled={primaryAction.mode === 'save' && saveStatus === 'saving'}
+        >
+          {primaryLabel}
         </Button>
       </div>
     </div>

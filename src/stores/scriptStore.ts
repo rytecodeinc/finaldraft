@@ -148,6 +148,8 @@ interface ScriptState {
   undo: () => void
   redo: () => void
   saveNow: () => Promise<void>
+  /** Flush project (+ active script when that project is open). */
+  saveProjectNow: (projectId?: string) => Promise<void>
   setTitle: (title: string) => void
   updateTitlePage: (patch: Partial<TitlePageInfo>) => void
   openFind: () => void
@@ -952,6 +954,23 @@ export const useScriptStore = create<ScriptState>((set, get) => {
         dirty: false,
       }))
       void saveProject(project)
+    } catch {
+      set({ saveStatus: 'error' })
+    }
+  },
+
+  saveProjectNow: async (projectId) => {
+    const id = projectId ?? get().project.id
+    if (id === get().project.id) {
+      await get().saveNow()
+      return
+    }
+    const project = get().projects.find((p) => p.id === id)
+    if (!project) return
+    set({ saveStatus: 'saving' })
+    try {
+      await saveProject({ ...project, updatedAt: Date.now() })
+      set({ saveStatus: 'saved' })
     } catch {
       set({ saveStatus: 'error' })
     }

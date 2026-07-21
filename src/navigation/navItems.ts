@@ -203,53 +203,95 @@ export function isScriptPath(pathname: string): boolean {
   )
 }
 
-export type PrimaryCreateAction =
+export type PrimaryActionTarget =
   | 'project'
   | 'scene'
   | 'character'
   | 'location'
   | 'note'
 
-/** Toolbar primary CTA based on the current route. */
-export function getPrimaryCreateAction(
+export type PrimaryAction = {
+  mode: 'create' | 'save'
+  target: PrimaryActionTarget
+}
+
+export type PrimaryActionContext = {
+  /** Selected derived directory item, when relevant. */
+  directoryKind?: 'character' | 'location' | 'scene' | null
+}
+
+/**
+ * Toolbar primary CTA based on the current route.
+ * Detail / selected-entity contexts use Save; list contexts use New.
+ */
+export function getPrimaryAction(
   pathname: string,
-): PrimaryCreateAction {
-  if (
-    pathname === '/projects' ||
-    pathname.startsWith('/projects/') ||
-    pathname === '/'
-  ) {
-    return 'project'
+  context: PrimaryActionContext = {},
+): PrimaryAction {
+  const projectDetail = parseProjectDetailPath(pathname)
+  if (projectDetail) {
+    return { mode: 'save', target: 'project' }
+  }
+  if (pathname === '/projects' || pathname === '/') {
+    return { mode: 'create', target: 'project' }
   }
 
   const story = parseProjectPath(pathname)
-  if (story?.view === 'characters') return 'character'
-  if (story?.view === 'locations') return 'location'
-  if (story?.view === 'notes') return 'note'
-  if (story?.view === 'outline' || story?.view === 'script') return 'scene'
+  const view = story?.view
+  const detail = story?.detail
 
-  if (pathname.startsWith('/characters')) return 'character'
-  if (pathname.startsWith('/locations')) return 'location'
-  if (pathname.startsWith('/notes')) return 'note'
-  if (pathname.startsWith('/outline') || pathname.startsWith('/script')) {
-    return 'scene'
+  if (view === 'characters' || pathname.startsWith('/characters')) {
+    if (detail) return { mode: 'save', target: 'character' }
+    return { mode: 'create', target: 'character' }
   }
 
-  return 'scene'
+  if (view === 'locations' || pathname.startsWith('/locations')) {
+    if (context.directoryKind === 'location') {
+      return { mode: 'save', target: 'location' }
+    }
+    return { mode: 'create', target: 'location' }
+  }
+
+  if (view === 'outline' || pathname.startsWith('/outline')) {
+    if (context.directoryKind === 'scene') {
+      return { mode: 'save', target: 'scene' }
+    }
+    return { mode: 'create', target: 'scene' }
+  }
+
+  if (view === 'notes' || pathname.startsWith('/notes')) {
+    return { mode: 'create', target: 'note' }
+  }
+
+  if (view === 'script' || pathname.startsWith('/script')) {
+    return { mode: 'create', target: 'scene' }
+  }
+
+  return { mode: 'create', target: 'scene' }
 }
 
-export function primaryCreateLabel(action: PrimaryCreateAction): string {
-  switch (action) {
-    case 'project':
-      return 'New Project'
-    case 'character':
-      return 'New Character'
-    case 'location':
-      return 'New Location'
-    case 'note':
-      return 'New Note'
-    case 'scene':
-    default:
-      return 'New Scene'
-  }
+/** @deprecated Use getPrimaryAction */
+export function getPrimaryCreateAction(
+  pathname: string,
+): PrimaryActionTarget {
+  return getPrimaryAction(pathname).target
+}
+
+export function primaryActionLabel(action: PrimaryAction): string {
+  const noun =
+    action.target === 'project'
+      ? 'Project'
+      : action.target === 'character'
+        ? 'Character'
+        : action.target === 'location'
+          ? 'Location'
+          : action.target === 'note'
+            ? 'Note'
+            : 'Scene'
+  return action.mode === 'save' ? `Save ${noun}` : `New ${noun}`
+}
+
+/** @deprecated Use primaryActionLabel */
+export function primaryCreateLabel(target: PrimaryActionTarget): string {
+  return primaryActionLabel({ mode: 'create', target })
 }
