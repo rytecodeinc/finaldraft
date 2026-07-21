@@ -114,6 +114,7 @@ function getSceneHeadingSuggestions(
   elements: ScreenplayElement[],
 ): SmartTypeSuggestion[] {
   const upper = text.toUpperCase()
+  const trimmed = upper.trim()
   const locations = collectLocations(elements)
   const times = collectTimesOfDay(elements)
 
@@ -134,12 +135,17 @@ function getSceneHeadingSuggestions(
     }))
   }
 
-  // Bare start or partial INT/EXT → offer completions
-  if (!upper.trim() || /^(I|IN|INT|E|EX|EXT|EST|I\/E|INT\/EXT)\.?$/i.test(upper.trim())) {
+  // Empty or incomplete abbrev only (I / IN / INT / EXT … without a trailing period).
+  // Completed "INT." / "EXT." must advance to the location stage — do not keep
+  // offering intExt options after the writer accepts one.
+  const incompleteIntExt =
+    !trimmed || /^(I|IN|INT|E|EX|EXT|EST|I\/E|INT\/EXT)$/i.test(trimmed)
+
+  if (incompleteIntExt) {
     const options = ['INT.', 'EXT.', 'INT/EXT.', 'I/E.', 'EST.']
     return options
       .filter((label) => {
-        const q = upper.trim().replace(/\.$/, '')
+        const q = trimmed
         if (!q) return true
         return label.replace(/\.$/, '').startsWith(q) || label.startsWith(q)
       })
@@ -151,7 +157,7 @@ function getSceneHeadingSuggestions(
       }))
   }
 
-  // After INT./EXT. suggest locations
+  // After completed INT./EXT. suggest locations (including bare "INT." / "INT. ")
   const intExtMatch = upper.match(/^(INT\.|EXT\.|INT\/EXT\.|I\/E\.|EST\.)\s*(.*)$/)
   if (intExtMatch) {
     const intExt = intExtMatch[1]!

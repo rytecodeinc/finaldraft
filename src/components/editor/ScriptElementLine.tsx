@@ -53,6 +53,7 @@ export function ScriptElementLine({
   const [activeSuggestion, setActiveSuggestion] = useState(0)
   const [menuNavigated, setMenuNavigated] = useState(false)
   const suppressMenuRef = useRef(false)
+  const armChainedMenuRef = useRef(false)
 
   const isSingleLine =
     element.type === 'character' ||
@@ -95,13 +96,22 @@ export function ScriptElementLine({
 
   useEffect(() => {
     setActiveSuggestion(0)
-    setMenuNavigated(false)
     if (suppressMenuRef.current) {
       suppressMenuRef.current = false
+      armChainedMenuRef.current = false
+      setMenuNavigated(false)
       setMenuOpen(false)
       return
     }
-    setMenuOpen(suggestions.length > 0 && isSelected)
+    const open = suggestions.length > 0 && isSelected
+    setMenuOpen(open)
+    // After INT/EXT or location accept, keep the next stage armed for Enter.
+    if (armChainedMenuRef.current) {
+      armChainedMenuRef.current = false
+      setMenuNavigated(open)
+      return
+    }
+    setMenuNavigated(false)
   }, [suggestions, isSelected, element.text])
 
   const applySuggestion = useCallback(
@@ -114,13 +124,14 @@ export function ScriptElementLine({
 
       if (chainsNextField) {
         suppressMenuRef.current = false
+        armChainedMenuRef.current = true
       } else {
         suppressMenuRef.current = true
+        armChainedMenuRef.current = false
         setMenuOpen(false)
       }
 
       updateElementText(element.id, suggestion.insertText)
-      setMenuNavigated(false)
       setActiveSuggestion(0)
 
       window.requestAnimationFrame(() => {
@@ -129,10 +140,6 @@ export function ScriptElementLine({
         node.focus()
         const len = suggestion.insertText.length
         node.setSelectionRange(len, len)
-        if (chainsNextField) {
-          // Re-open after text/suggestions settle for the next field.
-          setMenuOpen(true)
-        }
       })
     },
     [element.id, element.type, isSingleLine, updateElementText],
