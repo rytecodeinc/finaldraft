@@ -13,6 +13,8 @@ import {
   isBlankElement,
   parseSceneHeading,
   pruneBlankElements,
+  renameCharacterInElements,
+  renameLocationInElements,
   reorderSceneElements,
 } from '@/screenplay/elementRules'
 import { findInScript, type FindMatch, type FindTypeFilter } from '@/screenplay/findScript'
@@ -92,6 +94,8 @@ interface ScriptState {
   renameProject: (name: string) => void
   reorderScene: (sceneId: string, beforeSceneId: string | null) => void
   renameScene: (sceneId: string, heading: string) => void
+  renameCharacter: (fromName: string, toName: string) => void
+  renameLocation: (fromLocation: string, toLocation: string) => void
   selectElement: (id: string | null) => void
   requestFocus: (id: string, caret?: CaretPosition | null) => void
   clearFocusRequest: () => void
@@ -371,6 +375,42 @@ export const useScriptStore = create<ScriptState>((set, get) => {
 
   renameScene: (sceneId, heading) => {
     get().updateElementText(sceneId, heading.toUpperCase())
+  },
+
+  renameCharacter: (fromName, toName) => {
+    const next = renameCharacterInElements(get().doc.elements, fromName, toName)
+    if (next === get().doc.elements) return
+    const changed = next.some((el, i) => el.text !== get().doc.elements[i]?.text)
+    if (!changed) return
+    pushHistory(get, set)
+    set((state) => ({
+      doc: {
+        ...state.doc,
+        elements: next,
+        updatedAt: Date.now(),
+      },
+    }))
+    scheduleAutosave(get, set)
+  },
+
+  renameLocation: (fromLocation, toLocation) => {
+    const next = renameLocationInElements(
+      get().doc.elements,
+      fromLocation,
+      toLocation,
+    )
+    if (next === get().doc.elements) return
+    const changed = next.some((el, i) => el.text !== get().doc.elements[i]?.text)
+    if (!changed) return
+    pushHistory(get, set)
+    set((state) => ({
+      doc: {
+        ...state.doc,
+        elements: next,
+        updatedAt: Date.now(),
+      },
+    }))
+    scheduleAutosave(get, set)
   },
 
   selectElement: (id) =>

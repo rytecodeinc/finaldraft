@@ -227,6 +227,61 @@ export function collectLocationNames(elements: ScreenplayElement[]): string[] {
   return [...names].sort()
 }
 
+/** Strip extensions like (V.O.) / (CONT'D) from a character cue. */
+export function characterCueBaseName(text: string): string {
+  return text.replace(/\(.*?\)/g, '').trim().toUpperCase()
+}
+
+/**
+ * Rename every character cue whose base name matches `fromName`.
+ * Parenthetical extensions on the cue line are preserved.
+ */
+export function renameCharacterInElements(
+  elements: ScreenplayElement[],
+  fromName: string,
+  toName: string,
+): ScreenplayElement[] {
+  const from = fromName.replace(/\(.*?\)/g, '').trim().toUpperCase()
+  const to = toName.replace(/\(.*?\)/g, '').trim().toUpperCase()
+  if (!from || !to || from === to) return elements
+
+  return elements.map((el) => {
+    if (el.type !== 'character') return el
+    const base = characterCueBaseName(el.text)
+    if (base !== from) return el
+    const extension = el.text.match(/(\s*\(.*\))\s*$/)?.[1] ?? ''
+    return { ...el, text: `${to}${extension}` }
+  })
+}
+
+/**
+ * Rename a location across all scene headings that use it.
+ * INT/EXT and time of day are preserved.
+ */
+export function renameLocationInElements(
+  elements: ScreenplayElement[],
+  fromLocation: string,
+  toLocation: string,
+): ScreenplayElement[] {
+  const from = fromLocation.trim().toUpperCase()
+  const to = toLocation.trim().toUpperCase()
+  if (!from || !to || from === to) return elements
+
+  return elements.map((el) => {
+    if (el.type !== 'sceneHeading') return el
+    const parsed = parseSceneHeading(el.text)
+    if (!parsed.location || parsed.location.toUpperCase() !== from) return el
+    return {
+      ...el,
+      text: composeSceneHeading({
+        intExt: parsed.intExt,
+        location: to,
+        timeOfDay: parsed.timeOfDay,
+      }),
+    }
+  })
+}
+
 /**
  * Move a scene block (heading + following elements until next heading)
  * so it appears before `beforeSceneId`, or at end when beforeSceneId is null.
