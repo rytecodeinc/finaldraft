@@ -1,8 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
-import {
-  projectPath,
-} from '@/navigation/navItems'
+import { projectPath } from '@/navigation/navItems'
 import { extractScenes, getScreenplayAnalytics } from '@/screenplay/elementRules'
 import { loadProjectBundle } from '@/screenplay/idb'
 import {
