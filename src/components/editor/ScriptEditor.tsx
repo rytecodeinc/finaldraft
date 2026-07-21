@@ -36,11 +36,13 @@ export function ScriptEditor() {
   const activeMatchId = findMatches[findMatchIndex]?.elementId ?? null
 
   const commentedElementIds = useMemo(() => {
-    const ids = new Set(comments.map((comment) => comment.elementId))
+    const ids = new Set(
+      comments.filter((comment) => !comment.resolved).map((comment) => comment.elementId),
+    )
     if (commentDraft) ids.add(commentDraft.elementId)
     if (activeCommentId) {
       const active = comments.find((comment) => comment.id === activeCommentId)
-      if (active) ids.add(active.elementId)
+      if (active && !active.resolved) ids.add(active.elementId)
     }
     return ids
   }, [comments, commentDraft, activeCommentId])

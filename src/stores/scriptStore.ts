@@ -102,6 +102,7 @@ interface ScriptState {
   cancelCommentDraft: () => void
   submitCommentDraft: () => void
   setActiveComment: (commentId: string | null) => void
+  resolveComment: (commentId: string) => void
   deleteComment: (commentId: string) => void
 }
 
@@ -590,6 +591,7 @@ export const useScriptStore = create<ScriptState>((set, get) => ({
       text,
       createdAt: now,
       updatedAt: now,
+      resolved: false,
     }
 
     set((state) => ({
@@ -605,6 +607,24 @@ export const useScriptStore = create<ScriptState>((set, get) => ({
   },
 
   setActiveComment: (commentId) => set({ activeCommentId: commentId }),
+
+  resolveComment: (commentId) => {
+    pushHistory(get, set)
+    set((state) => ({
+      doc: {
+        ...state.doc,
+        comments: state.doc.comments.map((comment) =>
+          comment.id === commentId
+            ? { ...comment, resolved: true, updatedAt: Date.now() }
+            : comment,
+        ),
+        updatedAt: Date.now(),
+      },
+      activeCommentId:
+        state.activeCommentId === commentId ? null : state.activeCommentId,
+    }))
+    scheduleAutosave(get, set)
+  },
 
   deleteComment: (commentId) => {
     pushHistory(get, set)

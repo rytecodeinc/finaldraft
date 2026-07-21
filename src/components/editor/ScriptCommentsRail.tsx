@@ -29,6 +29,7 @@ export function ScriptCommentsRail() {
   const submitCommentDraft = useScriptStore((s) => s.submitCommentDraft)
   const setActiveComment = useScriptStore((s) => s.setActiveComment)
   const deleteComment = useScriptStore((s) => s.deleteComment)
+  const resolveComment = useScriptStore((s) => s.resolveComment)
   const author = useScriptStore((s) => {
     const fromTitle = s.doc.titlePage.authors.trim().split('\n')[0]?.trim()
     return fromTitle || 'You'
@@ -37,7 +38,10 @@ export function ScriptCommentsRail() {
   const elementIds = useMemo(() => new Set(elements.map((el) => el.id)), [elements])
 
   const visibleComments = useMemo(
-    () => comments.filter((comment) => elementIds.has(comment.elementId)),
+    () =>
+      comments.filter(
+        (comment) => elementIds.has(comment.elementId) && !comment.resolved,
+      ),
     [comments, elementIds],
   )
 
@@ -161,7 +165,7 @@ export function ScriptCommentsRail() {
                   .querySelector(`[data-element-id="${comment.elementId}"]`)
                   ?.scrollIntoView({ behavior: 'smooth', block: 'center' })
               }}
-              onResolve={() => deleteComment(comment.id)}
+              onResolve={() => resolveComment(comment.id)}
               onDelete={() => deleteComment(comment.id)}
             />
           </div>

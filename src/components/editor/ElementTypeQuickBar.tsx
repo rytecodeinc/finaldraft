@@ -37,7 +37,9 @@ export function ElementTypeQuickBar() {
   const commentActive =
     Boolean(selected) &&
     (commentDraft?.elementId === selected?.id ||
-      comments.some((comment) => comment.elementId === selected?.id))
+      comments.some(
+        (comment) => comment.elementId === selected?.id && !comment.resolved,
+      ))
 
   return (
     <div className="quick-actions" role="toolbar" aria-label="Element type">

@@ -6,6 +6,8 @@ interface LayoutState {
   sidebarWidth: number
   inspectorOpen: boolean
   inspectorWidth: number
+  commentsOpen: boolean
+  commentsWidth: number
   bottomPanelOpen: boolean
   bottomPanelHeight: number
   bottomPanelTab: 'problems' | 'output' | 'timeline'
@@ -15,6 +17,9 @@ interface LayoutState {
   setInspectorOpen: (open: boolean) => void
   toggleInspector: () => void
   setInspectorWidth: (width: number) => void
+  setCommentsOpen: (open: boolean) => void
+  toggleComments: () => void
+  setCommentsWidth: (width: number) => void
   setBottomPanelOpen: (open: boolean) => void
   toggleBottomPanel: () => void
   setBottomPanelHeight: (height: number) => void
@@ -27,6 +32,9 @@ export const SIDEBAR_DEFAULT = 248
 export const INSPECTOR_MIN = 240
 export const INSPECTOR_MAX = 420
 export const INSPECTOR_DEFAULT = 280
+export const COMMENTS_MIN = 260
+export const COMMENTS_MAX = 420
+export const COMMENTS_DEFAULT = 300
 export const BOTTOM_MIN = 120
 export const BOTTOM_MAX = 420
 export const BOTTOM_DEFAULT = 180
@@ -38,6 +46,8 @@ export const useLayoutStore = create<LayoutState>()(
       sidebarWidth: SIDEBAR_DEFAULT,
       inspectorOpen: true,
       inspectorWidth: INSPECTOR_DEFAULT,
+      commentsOpen: false,
+      commentsWidth: COMMENTS_DEFAULT,
       bottomPanelOpen: false,
       bottomPanelHeight: BOTTOM_DEFAULT,
       bottomPanelTab: 'problems',
@@ -52,6 +62,12 @@ export const useLayoutStore = create<LayoutState>()(
       setInspectorWidth: (inspectorWidth) =>
         set({
           inspectorWidth: Math.min(INSPECTOR_MAX, Math.max(INSPECTOR_MIN, inspectorWidth)),
+        }),
+      setCommentsOpen: (commentsOpen) => set({ commentsOpen }),
+      toggleComments: () => set((s) => ({ commentsOpen: !s.commentsOpen })),
+      setCommentsWidth: (commentsWidth) =>
+        set({
+          commentsWidth: Math.min(COMMENTS_MAX, Math.max(COMMENTS_MIN, commentsWidth)),
         }),
       setBottomPanelOpen: (bottomPanelOpen) => set({ bottomPanelOpen }),
       toggleBottomPanel: () => set((s) => ({ bottomPanelOpen: !s.bottomPanelOpen })),

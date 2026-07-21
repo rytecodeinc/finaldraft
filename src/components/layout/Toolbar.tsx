@@ -26,6 +26,8 @@ export function Toolbar() {
   const toggleSidebar = useLayoutStore((s) => s.toggleSidebar)
   const toggleInspector = useLayoutStore((s) => s.toggleInspector)
   const toggleBottomPanel = useLayoutStore((s) => s.toggleBottomPanel)
+  const commentsOpen = useLayoutStore((s) => s.commentsOpen)
+  const toggleComments = useLayoutStore((s) => s.toggleComments)
 
   const saveStatus = useScriptStore((s) => s.saveStatus)
   const dirty = useScriptStore((s) => s.dirty)
@@ -95,7 +97,11 @@ export function Toolbar() {
             <Search size={16} strokeWidth={1.75} />
           </IconButton>
         ) : null}
-        <IconButton label="Comments" disabled>
+        <IconButton
+          label="Comments"
+          active={commentsOpen}
+          onClick={toggleComments}
+        >
           <MessagesSquare size={16} strokeWidth={1.75} />
         </IconButton>
         <IconButton

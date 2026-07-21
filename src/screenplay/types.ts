@@ -23,6 +23,8 @@ export interface ElementComment {
   text: string
   createdAt: number
   updatedAt: number
+  /** Resolved comments stay in the sidebar list but leave the margin. */
+  resolved: boolean
 }
 
 /** Full Final Draft–style title page fields. */

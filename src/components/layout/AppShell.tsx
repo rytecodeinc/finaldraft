@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { Outlet } from 'react-router-dom'
 import { BottomPanel } from '@/components/layout/BottomPanel'
+import { CommentsPanel } from '@/components/layout/CommentsPanel'
 import { InspectorPanel } from '@/components/layout/InspectorPanel'
 import { MenuBar } from '@/components/layout/MenuBar'
 import { Sidebar } from '@/components/layout/Sidebar'
@@ -53,7 +54,10 @@ export function AppShell() {
           </main>
           <BottomPanel />
         </div>
-        <InspectorPanel />
+        <div className="workspace-right">
+          <CommentsPanel />
+          <InspectorPanel />
+        </div>
       </div>
       <StatusBar />
     </div>
