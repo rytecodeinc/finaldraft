@@ -12,6 +12,8 @@ export function OutlinePage() {
   const elements = useScriptStore((s) => s.doc.elements)
   const reorderScene = useScriptStore((s) => s.reorderScene)
   const renameScene = useScriptStore((s) => s.renameScene)
+  const selectDirectory = useScriptStore((s) => s.selectDirectory)
+  const directorySelection = useScriptStore((s) => s.directorySelection)
   const selectElement = useScriptStore((s) => s.selectElement)
   const requestFocus = useScriptStore((s) => s.requestFocus)
 
@@ -26,8 +28,8 @@ export function OutlinePage() {
           <p className="page-kicker">{projectName}</p>
           <h1 className="page-title">Outline</h1>
           <p className="page-desc">
-            Scenes from the screenplay. Reorder or rename here — the script stays
-            the source of truth.
+            Scenes from the screenplay. Select a scene to inspect; reorder or
+            rename here — the script stays the source of truth.
           </p>
         </header>
 
@@ -37,8 +39,14 @@ export function OutlinePage() {
           <ul className="derived-list">
             {scenes.map((scene, index) => {
               const editing = editingId === scene.id
+              const selected =
+                directorySelection?.kind === 'scene' &&
+                directorySelection.sceneId === scene.id
               return (
-                <li key={scene.id} className="derived-row">
+                <li
+                  key={scene.id}
+                  className={`derived-row ${selected ? 'is-selected' : ''}`.trim()}
+                >
                   <span className="derived-index">{scene.number}</span>
                   <div className="derived-main">
                     {editing ? (
@@ -67,16 +75,15 @@ export function OutlinePage() {
                       <button
                         type="button"
                         className="derived-title-btn"
-                        onClick={() => {
+                        onClick={() =>
+                          selectDirectory({ kind: 'scene', sceneId: scene.id })
+                        }
+                        onDoubleClick={() => {
                           selectElement(scene.id)
                           requestFocus(scene.id)
                           navigate(projectPath(projectId, 'script'))
                         }}
-                        onDoubleClick={() => {
-                          setEditingId(scene.id)
-                          setDraft(scene.heading)
-                        }}
-                        title="Open in script (double-click to rename)"
+                        title="Select to inspect · double-click to open in script"
                       >
                         {scene.heading}
                       </button>
@@ -94,6 +101,7 @@ export function OutlinePage() {
                       disabled={index === 0}
                       aria-label="Move scene up"
                       onClick={() => {
+                        selectDirectory({ kind: 'scene', sceneId: scene.id })
                         const beforeId = scenes[index - 1]?.id ?? null
                         if (beforeId) reorderScene(scene.id, beforeId)
                       }}
@@ -106,6 +114,7 @@ export function OutlinePage() {
                       disabled={index >= scenes.length - 1}
                       aria-label="Move scene down"
                       onClick={() => {
+                        selectDirectory({ kind: 'scene', sceneId: scene.id })
                         const after = scenes[index + 1]
                         if (!after) return
                         const beforeNext = scenes[index + 2]?.id ?? null

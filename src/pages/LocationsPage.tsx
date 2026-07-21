@@ -12,6 +12,8 @@ export function LocationsPage() {
   const getLocations = useScriptStore((s) => s.getLocations)
   const getScenes = useScriptStore((s) => s.getScenes)
   const renameLocation = useScriptStore((s) => s.renameLocation)
+  const selectDirectory = useScriptStore((s) => s.selectDirectory)
+  const directorySelection = useScriptStore((s) => s.directorySelection)
   const selectElement = useScriptStore((s) => s.selectElement)
   const requestFocus = useScriptStore((s) => s.requestFocus)
 
@@ -44,8 +46,8 @@ export function LocationsPage() {
           <p className="page-kicker">{projectName}</p>
           <h1 className="page-title">Locations</h1>
           <p className="page-desc">
-            Derived from scene headings. Rename here to update every matching
-            heading in the script (INT/EXT and time stay the same).
+            Derived from scene headings. Select a location to inspect; rename
+            here or in the inspector to update the script.
           </p>
         </header>
 
@@ -55,9 +57,15 @@ export function LocationsPage() {
           <ul className="derived-list">
             {locations.map((name) => {
               const editing = editingName === name
+              const selected =
+                directorySelection?.kind === 'location' &&
+                directorySelection.name === name
               const count = sceneCount(name)
               return (
-                <li key={name} className="derived-row">
+                <li
+                  key={name}
+                  className={`derived-row ${selected ? 'is-selected' : ''}`.trim()}
+                >
                   <span className="derived-index" aria-hidden>
                     ·
                   </span>
@@ -82,14 +90,17 @@ export function LocationsPage() {
                       <button
                         type="button"
                         className="derived-title-btn"
-                        onClick={() => {
+                        onClick={() =>
+                          selectDirectory({ kind: 'location', name })
+                        }
+                        onDoubleClick={() => {
                           const id = firstSceneId(name)
                           if (!id) return
                           selectElement(id)
                           requestFocus(id)
                           navigate(projectPath(projectId, 'script'))
                         }}
-                        title="Open first scene in script"
+                        title="Select to inspect · double-click to open in script"
                       >
                         {name}
                       </button>
@@ -106,6 +117,7 @@ export function LocationsPage() {
                         aria-label={`Rename ${name}`}
                         title="Rename location"
                         onClick={() => {
+                          selectDirectory({ kind: 'location', name })
                           setEditingName(name)
                           setDraft(name)
                         }}

@@ -548,6 +548,11 @@ button.placeholder-block {
   background: var(--bg-elevated);
 }
 
+.derived-row.is-selected {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border-default));
+  background: color-mix(in srgb, var(--accent-muted) 55%, var(--bg-elevated));
+}
+
 .derived-index,
 .derived-avatar {
   flex-shrink: 0;
@@ -1568,6 +1573,78 @@ button.placeholder-block {
 .inspector-heading {
   text-align: right;
   max-width: 55%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.inspector-action {
+  display: block;
+  width: 100%;
+  margin-top: 12px;
+  height: 32px;
+  padding: 0 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-default);
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  text-align: center;
+}
+
+.inspector-action:hover:not(:disabled) {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent-muted) 40%, var(--bg-elevated));
+}
+
+.inspector-action:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.inspector-scene-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.inspector-scene-btn {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.inspector-scene-btn:hover {
+  border-color: var(--border-subtle);
+  background: var(--bg-muted);
+}
+
+.inspector-scene-num {
+  flex-shrink: 0;
+  min-width: 1.5em;
+  font-weight: 600;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.inspector-scene-heading {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

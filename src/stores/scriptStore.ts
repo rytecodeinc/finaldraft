@@ -68,11 +68,18 @@ export interface CommentDraft {
   quote?: string
 }
 
+/** Selection on derived directory pages (characters / locations / outline). */
+export type DirectorySelection =
+  | { kind: 'character'; name: string }
+  | { kind: 'location'; name: string }
+  | { kind: 'scene'; sceneId: string }
+
 interface ScriptState {
   doc: ScriptDocument
   project: Project
   projects: Project[]
   selectedId: string | null
+  directorySelection: DirectorySelection | null
   focusRequestId: string | null
   focusCaret: CaretPosition | null
   saveStatus: SaveStatus
@@ -97,6 +104,7 @@ interface ScriptState {
   renameCharacter: (fromName: string, toName: string) => void
   renameLocation: (fromLocation: string, toLocation: string) => void
   selectElement: (id: string | null) => void
+  selectDirectory: (selection: DirectorySelection | null) => void
   requestFocus: (id: string, caret?: CaretPosition | null) => void
   clearFocusRequest: () => void
   rememberCaret: (id: string, caret: CaretPosition) => void
@@ -278,6 +286,7 @@ export const useScriptStore = create<ScriptState>((set, get) => {
   project: bootstrap.project,
   projects: [bootstrap.project],
   selectedId: null,
+  directorySelection: null,
   focusRequestId: null,
   focusCaret: null,
   saveStatus: 'idle',
@@ -383,12 +392,19 @@ export const useScriptStore = create<ScriptState>((set, get) => {
     const changed = next.some((el, i) => el.text !== get().doc.elements[i]?.text)
     if (!changed) return
     pushHistory(get, set)
+    const normalizedTo = toName.replace(/\(.*?\)/g, '').trim().toUpperCase()
+    const dir = get().directorySelection
     set((state) => ({
       doc: {
         ...state.doc,
         elements: next,
         updatedAt: Date.now(),
       },
+      directorySelection:
+        dir?.kind === 'character' &&
+        dir.name === fromName.replace(/\(.*?\)/g, '').trim().toUpperCase()
+          ? { kind: 'character', name: normalizedTo }
+          : state.directorySelection,
     }))
     scheduleAutosave(get, set)
   },
@@ -403,12 +419,19 @@ export const useScriptStore = create<ScriptState>((set, get) => {
     const changed = next.some((el, i) => el.text !== get().doc.elements[i]?.text)
     if (!changed) return
     pushHistory(get, set)
+    const normalizedTo = toLocation.trim().toUpperCase()
+    const dir = get().directorySelection
     set((state) => ({
       doc: {
         ...state.doc,
         elements: next,
         updatedAt: Date.now(),
       },
+      directorySelection:
+        dir?.kind === 'location' &&
+        dir.name === fromLocation.trim().toUpperCase()
+          ? { kind: 'location', name: normalizedTo }
+          : state.directorySelection,
     }))
     scheduleAutosave(get, set)
   },
@@ -416,9 +439,22 @@ export const useScriptStore = create<ScriptState>((set, get) => {
   selectElement: (id) =>
     set(
       id == null
-        ? { selectedId: null, focusRequestId: null, focusCaret: null }
-        : { selectedId: id },
+        ? {
+            selectedId: null,
+            focusRequestId: null,
+            focusCaret: null,
+            directorySelection: null,
+          }
+        : { selectedId: id, directorySelection: null },
     ),
+
+  selectDirectory: (selection) =>
+    set({
+      directorySelection: selection,
+      selectedId: null,
+      focusRequestId: null,
+      focusCaret: null,
+    }),
 
   requestFocus: (id, caret = null) =>
     set({ selectedId: id, focusRequestId: id, focusCaret: caret }),

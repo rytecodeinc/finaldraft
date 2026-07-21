@@ -227,9 +227,60 @@ export function collectLocationNames(elements: ScreenplayElement[]): string[] {
   return [...names].sort()
 }
 
-/** Strip extensions like (V.O.) / (CONT'D) from a character cue. */
 export function characterCueBaseName(text: string): string {
   return text.replace(/\(.*?\)/g, '').trim().toUpperCase()
+}
+
+export interface CharacterAppearance {
+  name: string
+  cueCount: number
+  firstCueId: string | null
+  scenes: SceneInfo[]
+}
+
+export function getCharacterAppearance(
+  elements: ScreenplayElement[],
+  name: string,
+): CharacterAppearance {
+  const upper = name.trim().toUpperCase()
+  const cueIds: string[] = []
+  const sceneById = new Map<string, SceneInfo>()
+
+  elements.forEach((el) => {
+    if (el.type !== 'character') return
+    if (characterCueBaseName(el.text) !== upper) return
+    cueIds.push(el.id)
+    const scene = findSceneForElement(elements, el.id)
+    if (scene) sceneById.set(scene.id, scene)
+  })
+
+  return {
+    name: upper,
+    cueCount: cueIds.length,
+    firstCueId: cueIds[0] ?? null,
+    scenes: [...sceneById.values()].sort((a, b) => a.number - b.number),
+  }
+}
+
+export interface LocationAppearance {
+  name: string
+  sceneCount: number
+  scenes: SceneInfo[]
+}
+
+export function getLocationAppearance(
+  elements: ScreenplayElement[],
+  name: string,
+): LocationAppearance {
+  const upper = name.trim().toUpperCase()
+  const scenes = extractScenes(elements).filter(
+    (scene) => scene.location?.toUpperCase() === upper,
+  )
+  return {
+    name: upper,
+    sceneCount: scenes.length,
+    scenes,
+  }
 }
 
 /**

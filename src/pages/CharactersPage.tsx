@@ -12,6 +12,8 @@ export function CharactersPage() {
   const elements = useScriptStore((s) => s.doc.elements)
   const getCharacters = useScriptStore((s) => s.getCharacters)
   const renameCharacter = useScriptStore((s) => s.renameCharacter)
+  const selectDirectory = useScriptStore((s) => s.selectDirectory)
+  const directorySelection = useScriptStore((s) => s.directorySelection)
   const selectElement = useScriptStore((s) => s.selectElement)
   const requestFocus = useScriptStore((s) => s.requestFocus)
 
@@ -51,8 +53,8 @@ export function CharactersPage() {
           <p className="page-kicker">{projectName}</p>
           <h1 className="page-title">Characters</h1>
           <p className="page-desc">
-            Derived from character cues in the screenplay. Rename here to update
-            every matching cue in the script.
+            Derived from character cues. Select a character to inspect; rename
+            here or in the inspector to update the script.
           </p>
         </header>
 
@@ -62,9 +64,15 @@ export function CharactersPage() {
           <ul className="derived-list">
             {characters.map((name) => {
               const editing = editingName === name
+              const selected =
+                directorySelection?.kind === 'character' &&
+                directorySelection.name === name
               const count = cueCount(name)
               return (
-                <li key={name} className="derived-row">
+                <li
+                  key={name}
+                  className={`derived-row ${selected ? 'is-selected' : ''}`.trim()}
+                >
                   <span className="derived-avatar" aria-hidden>
                     {name.charAt(0)}
                   </span>
@@ -89,14 +97,17 @@ export function CharactersPage() {
                       <button
                         type="button"
                         className="derived-title-btn"
-                        onClick={() => {
+                        onClick={() =>
+                          selectDirectory({ kind: 'character', name })
+                        }
+                        onDoubleClick={() => {
                           const id = firstCueId(name)
                           if (!id) return
                           selectElement(id)
                           requestFocus(id)
                           navigate(projectPath(projectId, 'script'))
                         }}
-                        title="Open first cue in script"
+                        title="Select to inspect · double-click to open in script"
                       >
                         {name}
                       </button>
@@ -113,6 +124,7 @@ export function CharactersPage() {
                         aria-label={`Rename ${name}`}
                         title="Rename character"
                         onClick={() => {
+                          selectDirectory({ kind: 'character', name })
                           setEditingName(name)
                           setDraft(name)
                         }}
