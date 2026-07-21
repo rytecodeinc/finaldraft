@@ -80,6 +80,40 @@ function normalizeParenthetical(text: string): string {
   return value
 }
 
+/** Caret should sit inside `(...)`, never after the closing paren. */
+export function caretInsideParenthetical(text: string): { start: number; end: number } {
+  if (text.startsWith('(') && text.endsWith(')') && text.length >= 2) {
+    const inside = text.length - 1
+    return { start: inside, end: inside }
+  }
+  if (text.startsWith('(')) {
+    return { start: text.length, end: text.length }
+  }
+  return { start: text.length, end: text.length }
+}
+
+export function clampCaretForElement(
+  type: ElementType,
+  text: string,
+  caret: { start: number; end: number } | null,
+): { start: number; end: number } {
+  const len = text.length
+  if (type === 'parenthetical' && text.startsWith('(') && text.endsWith(')') && len >= 2) {
+    const min = 1
+    const max = len - 1
+    if (!caret) return { start: max, end: max }
+    return {
+      start: Math.min(Math.max(caret.start, min), max),
+      end: Math.min(Math.max(caret.end, min), max),
+    }
+  }
+  if (!caret) return { start: len, end: len }
+  return {
+    start: Math.min(Math.max(caret.start, 0), len),
+    end: Math.min(Math.max(caret.end, 0), len),
+  }
+}
+
 export function parseSceneHeading(text: string): ParsedSceneHeading {
   const upper = text.toUpperCase().trimEnd()
   if (!upper.trim()) {

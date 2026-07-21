@@ -8,7 +8,7 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
 } from 'react'
 import { SmartTypeMenu } from '@/components/editor/SmartTypeMenu'
-import { formatElementText } from '@/screenplay/elementRules'
+import { formatElementText, clampCaretForElement } from '@/screenplay/elementRules'
 import { getSmartTypeSuggestions, type SmartTypeSuggestion } from '@/screenplay/smartType'
 import { resolveTabAction } from '@/screenplay/tabBehavior'
 import type { ElementType, ScreenplayElement } from '@/screenplay/types'
@@ -90,13 +90,27 @@ export function ScriptElementLine({
     const node = isSingleLine ? inputRef.current : textareaRef.current
     if (!node) return
     node.focus({ preventScroll: true })
-    const len = node.value.length
-    const start = focusCaret ? Math.min(focusCaret.start, len) : len
-    const end = focusCaret ? Math.min(focusCaret.end, len) : len
-    node.setSelectionRange(start, end)
+    const caret = clampCaretForElement(element.type, node.value, focusCaret)
+    node.setSelectionRange(caret.start, caret.end)
     cyclingTypeRef.current = false
     clearFocusRequest()
   }, [shouldFocus, clearFocusRequest, isSingleLine, element.type, focusCaret])
+
+  const placeParentheticalCaret = useCallback(() => {
+    if (element.type !== 'parenthetical') return
+    const node = inputRef.current
+    if (!node) return
+    const text = node.value
+    if (!(text.startsWith('(') && text.endsWith(')') && text.length >= 2)) return
+    const pos = node.selectionStart ?? 0
+    const endPos = node.selectionEnd ?? pos
+    // Outside the interior — snap inside (e.g. after `)` or before `(`).
+    if (pos < 1 || pos > text.length - 1 || endPos < 1 || endPos > text.length - 1) {
+      const caret = clampCaretForElement('parenthetical', text, null)
+      node.setSelectionRange(caret.start, caret.end)
+      rememberCaret(element.id, caret)
+    }
+  }, [element.id, element.type, rememberCaret])
 
   const syncCaret = useCallback(() => {
     const node = isSingleLine ? inputRef.current : textareaRef.current
@@ -327,8 +341,12 @@ export function ScriptElementLine({
     onFocus: () => {
       selectElement(element.id)
       if (suggestions.length > 0) setMenuOpen(true)
+      window.requestAnimationFrame(() => placeParentheticalCaret())
     },
-    onClick: () => selectElement(element.id),
+    onClick: () => {
+      selectElement(element.id)
+      window.requestAnimationFrame(() => placeParentheticalCaret())
+    },
     onChange: (e: { target: { value: string } }) => {
       let next = e.target.value
       if (showContinued && element.type === 'character') {

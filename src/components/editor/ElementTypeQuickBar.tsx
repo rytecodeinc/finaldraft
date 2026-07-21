@@ -63,7 +63,10 @@ export function ElementTypeQuickBar() {
             onClick={() => {
               if (!selected) return
               setElementType(selected.id, type)
-              requestFocus(selected.id)
+              requestFocus(
+                selected.id,
+                type === 'parenthetical' ? { start: 1, end: 1 } : null,
+              )
             }}
           >
             <Icon size={16} strokeWidth={1.75} />

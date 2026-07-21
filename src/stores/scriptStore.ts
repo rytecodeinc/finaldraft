@@ -378,7 +378,17 @@ export const useScriptStore = create<ScriptState>((set, get) => ({
     const nextType = cycleTabElementType(element.type, direction)
     get().setElementType(id, nextType)
     // Keep keyboard focus on the element after input/textarea remounts.
-    set({ selectedId: id, focusRequestId: id, focusCaret: null })
+    // Parentheticals start as "()" — place caret between the parens.
+    const nextText = get().doc.elements.find((el) => el.id === id)?.text ?? ''
+    const caret =
+      nextType === 'parenthetical'
+        ? { start: 1, end: 1 }
+        : null
+    set({
+      selectedId: id,
+      focusRequestId: id,
+      focusCaret: caret ?? (nextText ? { start: nextText.length, end: nextText.length } : null),
+    })
   },
 
   insertAfter: (id, type, text = '') => {
