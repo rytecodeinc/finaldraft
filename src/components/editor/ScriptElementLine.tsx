@@ -6,6 +6,7 @@ import {
   useRef,
   useState,
   type KeyboardEvent as ReactKeyboardEvent,
+  type ReactNode,
 } from 'react'
 import { SmartTypeMenu } from '@/components/editor/SmartTypeMenu'
 import { formatElementText, clampCaretForElement } from '@/screenplay/elementRules'
@@ -13,6 +14,10 @@ import { getSmartTypeSuggestions, type SmartTypeSuggestion } from '@/screenplay/
 import { resolveTabAction } from '@/screenplay/tabBehavior'
 import type { ElementType, ScreenplayElement } from '@/screenplay/types'
 import { ELEMENT_LABELS } from '@/screenplay/types'
+import {
+  mergeTextRanges,
+  type TextRange,
+} from '@/screenplay/commentRange'
 import { useScriptStore } from '@/stores/scriptStore'
 
 interface ScriptElementLineProps {
@@ -20,7 +25,12 @@ interface ScriptElementLineProps {
   isSelected: boolean
   shouldFocus: boolean
   isFindMatch?: boolean
+  /** Whole-element comment wash (no partial range). */
   hasComment?: boolean
+  /** Element has at least one partial-range comment. */
+  hasCommentRange?: boolean
+  /** Character ranges to highlight inside the element text. */
+  commentRanges?: TextRange[]
   showContinued?: boolean
 }
 
@@ -35,6 +45,8 @@ export function ScriptElementLine({
   shouldFocus,
   isFindMatch = false,
   hasComment = false,
+  hasCommentRange = false,
+  commentRanges = [],
   showContinued = false,
 }: ScriptElementLineProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -334,6 +346,19 @@ export function ScriptElementLine({
       ? withContd(element.text)
       : element.text
 
+  const highlightRanges = useMemo(() => {
+    // Ranges are against element.text; CONT'D suffix is beyond that length.
+    const capped = commentRanges
+      .map((range) => ({
+        start: Math.max(0, Math.min(range.start, element.text.length)),
+        end: Math.max(0, Math.min(range.end, element.text.length)),
+      }))
+      .filter((range) => range.end > range.start)
+    return mergeTextRanges(capped)
+  }, [commentRanges, element.text.length])
+
+  const hasHighlights = highlightRanges.length > 0
+
   const shared = {
     id: `el-${element.id}`,
     className: 'sp-element-input',
@@ -365,7 +390,7 @@ export function ScriptElementLine({
 
   return (
     <div
-      className={`sp-element sp-element--${element.type} ${isSelected ? 'is-selected' : ''} ${isFindMatch ? 'is-find-match' : ''} ${hasComment ? 'has-comment' : ''}`.trim()}
+      className={`sp-element sp-element--${element.type} ${isSelected ? 'is-selected' : ''} ${isFindMatch ? 'is-find-match' : ''} ${hasComment ? 'has-comment' : ''} ${hasCommentRange || hasHighlights ? 'has-comment-range' : ''}`.trim()}
       data-element-id={element.id}
       data-element-type={element.type}
     >
@@ -376,22 +401,31 @@ export function ScriptElementLine({
         <label className="sr-only" htmlFor={`el-${element.id}`}>
           {ELEMENT_LABELS[element.type]}
         </label>
-        {isSingleLine ? (
-          <input
-            {...shared}
-            ref={inputRef}
-            type="text"
-            spellCheck={false}
-            autoComplete="off"
-          />
-        ) : (
-          <textarea
-            {...shared}
-            ref={textareaRef}
-            rows={1}
-            spellCheck={element.type === 'action' || element.type === 'dialogue'}
-          />
-        )}
+        <div
+          className={`sp-element-field ${hasHighlights ? 'has-highlights' : ''}`.trim()}
+        >
+          {hasHighlights ? (
+            <div className="sp-element-highlight-layer" aria-hidden>
+              {renderHighlightedText(displayValue, highlightRanges)}
+            </div>
+          ) : null}
+          {isSingleLine ? (
+            <input
+              {...shared}
+              ref={inputRef}
+              type="text"
+              spellCheck={false}
+              autoComplete="off"
+            />
+          ) : (
+            <textarea
+              {...shared}
+              ref={textareaRef}
+              rows={1}
+              spellCheck={element.type === 'action' || element.type === 'dialogue'}
+            />
+          )}
+        </div>
         {menuOpen && isSelected ? (
           <SmartTypeMenu
             suggestions={suggestions}
@@ -412,6 +446,23 @@ export function ScriptElementLine({
       </div>
     </div>
   )
+}
+
+function renderHighlightedText(text: string, ranges: TextRange[]) {
+  if (ranges.length === 0) return text
+  const parts: ReactNode[] = []
+  let cursor = 0
+  ranges.forEach((range, index) => {
+    if (range.start > cursor) {
+      parts.push(text.slice(cursor, range.start))
+    }
+    parts.push(
+      <mark key={`m-${index}-${range.start}`}>{text.slice(range.start, range.end)}</mark>,
+    )
+    cursor = range.end
+  })
+  if (cursor < text.length) parts.push(text.slice(cursor))
+  return parts
 }
 
 function withContd(text: string): string {

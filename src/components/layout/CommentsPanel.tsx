@@ -4,6 +4,7 @@ import { IconButton } from '@/components/ui/IconButton'
 import { PanelHeader } from '@/components/ui/PanelHeader'
 import { Resizer } from '@/components/ui/Resizer'
 import { useScriptPagination } from '@/hooks/useScriptPagination'
+import { getCommentQuote } from '@/screenplay/commentRange'
 import { ELEMENT_LABELS } from '@/screenplay/types'
 import { useLayoutStore } from '@/stores/layoutStore'
 import { useScriptStore } from '@/stores/scriptStore'
@@ -183,6 +184,7 @@ export function CommentsPanel() {
               const element = elements.find((el) => el.id === comment.elementId)
               const page = elementPage.get(comment.elementId)
               const active = activeCommentId === comment.id
+              const quote = getCommentQuote(comment, element?.text)
               return (
                 <li key={comment.id}>
                   <div
@@ -224,6 +226,9 @@ export function CommentsPanel() {
                         {comment.resolved ? 'Resolved' : 'Open'}
                       </span>
                     </div>
+                    {quote ? (
+                      <p className="script-comment-quote comments-panel-quote">{quote}</p>
+                    ) : null}
                     <p className="comments-panel-item-text">{comment.text}</p>
                     <div className="comments-panel-item-meta">
                       <span>

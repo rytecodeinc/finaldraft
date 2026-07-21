@@ -25,6 +25,15 @@ export interface ElementComment {
   updatedAt: number
   /** Resolved comments stay in the sidebar list but leave the margin. */
   resolved: boolean
+  /**
+   * Optional character offsets into the element text at comment time.
+   * When both are set and end > start, only that span is highlighted.
+   * Omitted (or collapsed) means the whole element.
+   */
+  startOffset?: number
+  endOffset?: number
+  /** Snapshot of the selected text when the comment was created. */
+  quote?: string
 }
 
 /** Full Final Draft–style title page fields. */

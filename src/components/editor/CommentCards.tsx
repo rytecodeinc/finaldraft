@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { Check } from 'lucide-react'
+import { getCommentQuote } from '@/screenplay/commentRange'
 import type { ElementComment } from '@/screenplay/types'
 
 function authorInitial(name: string): string {
@@ -30,6 +31,7 @@ function formatCommentTime(timestamp: number): string {
 interface CommentComposeCardProps {
   author: string
   text: string
+  quote?: string | null
   onChange: (text: string) => void
   onCancel: () => void
   onSubmit: () => void
@@ -39,6 +41,7 @@ interface CommentComposeCardProps {
 export function CommentComposeCard({
   author,
   text,
+  quote,
   onChange,
   onCancel,
   onSubmit,
@@ -65,6 +68,8 @@ export function CommentComposeCard({
           <span className="script-comment-author">{author}</span>
         </div>
       </div>
+
+      {quote ? <p className="script-comment-quote">{quote}</p> : null}
 
       <input
         ref={inputRef}
@@ -117,6 +122,8 @@ export function CommentThreadCard({
   onResolve,
   onDelete,
 }: CommentThreadCardProps) {
+  const quote = getCommentQuote(comment)
+
   return (
     <div
       className={`script-comment-card ${isActive ? 'is-active' : ''}`.trim()}
@@ -167,6 +174,7 @@ export function CommentThreadCard({
           </button>
         </div>
       </div>
+      {quote ? <p className="script-comment-quote">{quote}</p> : null}
       <p className="script-comment-body">{comment.text}</p>
     </div>
   )

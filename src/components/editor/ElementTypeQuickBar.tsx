@@ -88,7 +88,29 @@ export function ElementTypeQuickBar() {
         }}
         onClick={() => {
           if (!selected) return
-          startCommentDraft(selected.id)
+          // Read live selection so a partial highlight can be commented.
+          const node = document.getElementById(
+            `el-${selected.id}`,
+          ) as HTMLInputElement | HTMLTextAreaElement | null
+          let range: { start: number; end: number; quote: string } | null = null
+          if (node && typeof node.selectionStart === 'number') {
+            const start = node.selectionStart
+            const end = node.selectionEnd ?? start
+            if (end > start) {
+              // Strip CONT'D display suffix for character lines when present.
+              const raw = selected.text
+              const clippedEnd = Math.min(end, raw.length)
+              const clippedStart = Math.min(start, clippedEnd)
+              if (clippedEnd > clippedStart) {
+                range = {
+                  start: clippedStart,
+                  end: clippedEnd,
+                  quote: raw.slice(clippedStart, clippedEnd),
+                }
+              }
+            }
+          }
+          startCommentDraft(selected.id, range)
         }}
       >
         <MessageSquarePlus size={16} strokeWidth={1.75} />

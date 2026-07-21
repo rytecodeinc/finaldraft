@@ -8,6 +8,7 @@ import { TitlePage } from '@/components/editor/TitlePage'
 import { findInScript } from '@/screenplay/findScript'
 import { useScriptPagination } from '@/hooks/useScriptPagination'
 import { useScriptStore } from '@/stores/scriptStore'
+import { commentHighlightRange } from '@/screenplay/commentRange'
 
 export function ScriptEditor() {
   const hydrated = useScriptStore((s) => s.hydrated)
@@ -15,7 +16,6 @@ export function ScriptEditor() {
   const elements = useScriptStore((s) => s.doc.elements)
   const comments = useScriptStore((s) => s.doc.comments)
   const commentDraft = useScriptStore((s) => s.commentDraft)
-  const activeCommentId = useScriptStore((s) => s.activeCommentId)
   const selectedId = useScriptStore((s) => s.selectedId)
   const focusRequestId = useScriptStore((s) => s.focusRequestId)
   const focusCaret = useScriptStore((s) => s.focusCaret)
@@ -45,16 +45,60 @@ export function ScriptEditor() {
   const activeMatchId = findMatches[findMatchIndex]?.elementId ?? null
 
   const commentedElementIds = useMemo(() => {
-    const ids = new Set(
-      comments.filter((comment) => !comment.resolved).map((comment) => comment.elementId),
-    )
-    if (commentDraft) ids.add(commentDraft.elementId)
-    if (activeCommentId) {
-      const active = comments.find((comment) => comment.id === activeCommentId)
-      if (active && !active.resolved) ids.add(active.elementId)
+    const ids = new Set<string>()
+    for (const comment of comments) {
+      if (comment.resolved) continue
+      const el = elements.find((e) => e.id === comment.elementId)
+      const range = el
+        ? commentHighlightRange(comment, el.text.length)
+        : null
+      // Whole-element wash only when the comment has no partial range.
+      if (!range) ids.add(comment.elementId)
+    }
+    if (commentDraft) {
+      const el = elements.find((e) => e.id === commentDraft.elementId)
+      const range = el
+        ? commentHighlightRange(commentDraft, el.text.length)
+        : null
+      if (!range) ids.add(commentDraft.elementId)
     }
     return ids
-  }, [comments, commentDraft, activeCommentId])
+  }, [comments, commentDraft, elements])
+
+  const commentRangesByElement = useMemo(() => {
+    const map = new Map<string, { start: number; end: number }[]>()
+    const add = (
+      elementId: string,
+      range: { start: number; end: number } | null,
+    ) => {
+      if (!range) return
+      const list = map.get(elementId) ?? []
+      list.push(range)
+      map.set(elementId, list)
+    }
+
+    for (const comment of comments) {
+      if (comment.resolved) continue
+      const el = elements.find((e) => e.id === comment.elementId)
+      if (!el) continue
+      add(comment.elementId, commentHighlightRange(comment, el.text.length))
+    }
+    if (commentDraft) {
+      const el = elements.find((e) => e.id === commentDraft.elementId)
+      if (el) {
+        add(
+          commentDraft.elementId,
+          commentHighlightRange(commentDraft, el.text.length),
+        )
+      }
+    }
+    return map
+  }, [comments, commentDraft, elements])
+
+  const rangedCommentElementIds = useMemo(
+    () => new Set(commentRangesByElement.keys()),
+    [commentRangesByElement],
+  )
 
   useEffect(() => {
     if (!hydrated) void hydrate()
@@ -237,6 +281,8 @@ export function ScriptEditor() {
                             shouldFocus={focusRequestId === element.id}
                             isFindMatch={activeMatchId === element.id}
                             hasComment={commentedElementIds.has(element.id)}
+                            hasCommentRange={rangedCommentElementIds.has(element.id)}
+                            commentRanges={commentRangesByElement.get(element.id) ?? []}
                             showContinued={index === 0 && showContinuedOnCharacter}
                           />
                         ))}

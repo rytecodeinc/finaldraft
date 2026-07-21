@@ -1041,6 +1041,24 @@
   word-break: break-word;
 }
 
+.script-comment-quote {
+  margin: 0 0 8px;
+  padding: 6px 10px;
+  border-left: 3px solid color-mix(in srgb, #d4a017 70%, transparent);
+  background: color-mix(in srgb, #f2c94c 18%, transparent);
+  border-radius: 0 4px 4px 0;
+  font-family: var(--font-script, var(--font-ui));
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.comments-panel-quote {
+  margin: 6px 0 0;
+}
+
 .script-comment-input {
   width: 100%;
   height: 36px;
@@ -1105,6 +1123,53 @@
 
 .sp-element.has-comment.is-selected {
   background: color-mix(in srgb, #f2c94c 38%, var(--accent-muted));
+}
+
+/* Partial selection comments: no whole-element wash, only text marks. */
+.sp-element.has-comment-range:not(.has-comment) {
+  box-shadow: none;
+}
+
+.sp-element-field {
+  position: relative;
+  width: 100%;
+}
+
+.sp-element-highlight-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  padding: 5px 8px;
+  margin: 0;
+  font: inherit;
+  line-height: 1.25;
+  color: inherit;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  overflow: hidden;
+}
+
+.sp-element-highlight-layer mark {
+  background: color-mix(in srgb, #f2c94c 62%, transparent);
+  color: inherit;
+  border-radius: 2px;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+.sp-element-field.has-highlights .sp-element-input {
+  position: relative;
+  z-index: 1;
+  color: transparent;
+  caret-color: var(--text-primary);
+  -webkit-text-fill-color: transparent;
+}
+
+.sp-element-field.has-highlights .sp-element-input::selection {
+  background: color-mix(in srgb, var(--accent) 35%, transparent);
+  color: transparent;
 }
 
 .script-page {
@@ -1258,45 +1323,57 @@
   font-style: italic;
 }
 
-.sp-element--sceneHeading .sp-element-input {
-  text-transform: uppercase;
-  font-weight: 700;
-  letter-spacing: 0.01em;
+.sp-element--sceneHeading .sp-element-field {
   margin-top: 14px;
   margin-bottom: 4px;
 }
 
-.sp-element--action .sp-element-input {
-  width: 100%;
+.sp-element--sceneHeading .sp-element-input,
+.sp-element--sceneHeading .sp-element-highlight-layer {
+  text-transform: uppercase;
+  font-weight: 700;
+  letter-spacing: 0.01em;
 }
 
-.sp-element--character .sp-element-input {
-  text-transform: uppercase;
-  text-align: center;
+.sp-element--character .sp-element-field {
   width: 60%;
   margin-left: 20%;
   margin-top: 12px;
+}
+
+.sp-element--character .sp-element-input,
+.sp-element--character .sp-element-highlight-layer {
+  text-transform: uppercase;
+  text-align: center;
   font-weight: 700;
 }
 
-.sp-element--parenthetical .sp-element-input {
-  text-align: center;
+.sp-element--parenthetical .sp-element-field {
   width: 40%;
   margin-left: 30%;
+}
+
+.sp-element--parenthetical .sp-element-input,
+.sp-element--parenthetical .sp-element-highlight-layer {
+  text-align: center;
   font-style: italic;
 }
 
-.sp-element--dialogue .sp-element-input {
+.sp-element--dialogue .sp-element-field {
   width: 60%;
   margin-left: 20%;
 }
 
-.sp-element--transition .sp-element-input {
+.sp-element--transition .sp-element-field {
+  margin-top: 12px;
+  margin-bottom: 8px;
+}
+
+.sp-element--transition .sp-element-input,
+.sp-element--transition .sp-element-highlight-layer {
   text-transform: uppercase;
   text-align: right;
   font-weight: 700;
-  margin-top: 12px;
-  margin-bottom: 8px;
 }
 
 .script-hint {
@@ -1383,8 +1460,21 @@
   color: var(--text-primary);
 }
 
+.inspector-field textarea {
+  min-height: 72px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-default);
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  font: inherit;
+  line-height: 1.4;
+  resize: vertical;
+}
+
 .inspector-field input:focus,
-.inspector-field select:focus {
+.inspector-field select:focus,
+.inspector-field textarea:focus {
   outline: 2px solid var(--accent);
   outline-offset: 1px;
 }
@@ -1465,13 +1555,13 @@
     display: none;
   }
 
-  .sp-element--character .sp-element-input,
-  .sp-element--dialogue .sp-element-input {
+  .sp-element--character .sp-element-field,
+  .sp-element--dialogue .sp-element-field {
     width: 80%;
     margin-left: 10%;
   }
 
-  .sp-element--parenthetical .sp-element-input {
+  .sp-element--parenthetical .sp-element-field {
     width: 60%;
     margin-left: 20%;
   }

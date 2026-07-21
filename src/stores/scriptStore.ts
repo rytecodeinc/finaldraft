@@ -52,6 +52,10 @@ export interface SceneMetaPatch {
 export interface CommentDraft {
   elementId: string
   text: string
+  /** Partial selection into the element text; omitted = whole element. */
+  startOffset?: number
+  endOffset?: number
+  quote?: string
 }
 
 interface ScriptState {
@@ -104,7 +108,10 @@ interface ScriptState {
   getScenes: () => SceneInfo[]
   getCharacters: () => string[]
   getPageEstimate: () => number
-  startCommentDraft: (elementId: string) => void
+  startCommentDraft: (
+    elementId: string,
+    range?: { start: number; end: number; quote?: string } | null,
+  ) => void
   setCommentDraftText: (text: string) => void
   cancelCommentDraft: () => void
   submitCommentDraft: () => void
@@ -631,12 +638,33 @@ export const useScriptStore = create<ScriptState>((set, get) => ({
   getCharacters: () => collectCharacterNames(get().doc.elements),
   getPageEstimate: () => estimatePageCount(get().doc.elements),
 
-  startCommentDraft: (elementId) => {
-    const exists = get().doc.elements.some((el) => el.id === elementId)
-    if (!exists) return
+  startCommentDraft: (elementId, range = null) => {
+    const element = get().doc.elements.find((el) => el.id === elementId)
+    if (!element) return
+
+    let startOffset: number | undefined
+    let endOffset: number | undefined
+    let quote: string | undefined
+
+    if (range && range.end > range.start) {
+      const start = Math.max(0, Math.min(range.start, element.text.length))
+      const end = Math.max(start, Math.min(range.end, element.text.length))
+      if (end > start) {
+        startOffset = start
+        endOffset = end
+        quote = range.quote ?? element.text.slice(start, end)
+      }
+    }
+
     set({
       selectedId: elementId,
-      commentDraft: { elementId, text: '' },
+      commentDraft: {
+        elementId,
+        text: '',
+        startOffset,
+        endOffset,
+        quote,
+      },
       activeCommentId: null,
     })
   },
@@ -665,6 +693,9 @@ export const useScriptStore = create<ScriptState>((set, get) => ({
       createdAt: now,
       updatedAt: now,
       resolved: false,
+      startOffset: draft.startOffset,
+      endOffset: draft.endOffset,
+      quote: draft.quote,
     }
 
     set((state) => ({

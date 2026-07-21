@@ -65,10 +65,29 @@ export function normalizeScriptDocument(
     elements,
     comments: Array.isArray(raw.comments)
       ? raw.comments
-          .map((comment) => ({
-            ...comment,
-            resolved: Boolean(comment.resolved),
-          }))
+          .map((comment) => {
+            const startOffset =
+              typeof comment.startOffset === 'number' &&
+              Number.isFinite(comment.startOffset)
+                ? Math.max(0, Math.floor(comment.startOffset))
+                : undefined
+            const endOffset =
+              typeof comment.endOffset === 'number' &&
+              Number.isFinite(comment.endOffset)
+                ? Math.max(0, Math.floor(comment.endOffset))
+                : undefined
+            const quote =
+              typeof comment.quote === 'string' && comment.quote.length > 0
+                ? comment.quote
+                : undefined
+            return {
+              ...comment,
+              resolved: Boolean(comment.resolved),
+              startOffset,
+              endOffset,
+              quote,
+            }
+          })
           .filter((comment) => elementIds.has(comment.elementId))
       : [],
     createdAt: raw.createdAt ?? sample.createdAt,

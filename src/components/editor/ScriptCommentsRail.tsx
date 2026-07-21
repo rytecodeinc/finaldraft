@@ -139,6 +139,7 @@ export function ScriptCommentsRail() {
               <CommentComposeCard
                 author={author}
                 text={draft.text}
+                quote={draft.quote}
                 onChange={setCommentDraftText}
                 onCancel={cancelCommentDraft}
                 onSubmit={submitCommentDraft}
