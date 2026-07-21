@@ -26,10 +26,17 @@ import type {
 const MAX_HISTORY = 80
 const AUTOSAVE_MS = 700
 
+export interface CaretPosition {
+  start: number
+  end: number
+}
+
 interface HistorySnapshot {
   title: string
   titlePage: TitlePageInfo
   elements: ScreenplayElement[]
+  selectedId: string | null
+  caret: CaretPosition | null
 }
 
 export interface SceneMetaPatch {
@@ -42,6 +49,7 @@ interface ScriptState {
   doc: ScriptDocument
   selectedId: string | null
   focusRequestId: string | null
+  focusCaret: CaretPosition | null
   saveStatus: SaveStatus
   hydrated: boolean
   dirty: boolean
@@ -54,7 +62,7 @@ interface ScriptState {
   findMatchIndex: number
   hydrate: () => Promise<void>
   selectElement: (id: string | null) => void
-  requestFocus: (id: string) => void
+  requestFocus: (id: string, caret?: CaretPosition | null) => void
   clearFocusRequest: () => void
   updateElementText: (id: string, text: string) => void
   setElementType: (id: string, type: ElementType) => void
@@ -94,11 +102,28 @@ function cloneTitlePage(titlePage: TitlePageInfo): TitlePageInfo {
   return { ...titlePage }
 }
 
-function snapshotDoc(doc: ScriptDocument): HistorySnapshot {
+function captureCaret(): CaretPosition | null {
+  const el = document.activeElement
+  if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
+    return {
+      start: el.selectionStart ?? el.value.length,
+      end: el.selectionEnd ?? el.value.length,
+    }
+  }
+  return null
+}
+
+function snapshotDoc(
+  doc: ScriptDocument,
+  selectedId: string | null,
+  caret: CaretPosition | null = captureCaret(),
+): HistorySnapshot {
   return {
     title: doc.title,
     titlePage: cloneTitlePage(doc.titlePage),
     elements: cloneElements(doc.elements),
+    selectedId,
+    caret,
   }
 }
 
@@ -121,8 +146,8 @@ function scheduleAutosave(get: () => ScriptState, set: (partial: Partial<ScriptS
 function pushHistory(get: () => ScriptState, set: (partial: Partial<ScriptState>) => void) {
   if (historyLocked) return
   historyLocked = true
-  const { doc, undoStack } = get()
-  const snapshot = snapshotDoc(doc)
+  const { doc, undoStack, selectedId } = get()
+  const snapshot = snapshotDoc(doc, selectedId, captureCaret())
   const last = undoStack[undoStack.length - 1]
   if (!last || !snapshotsEqual(last, snapshot)) {
     set({
@@ -136,10 +161,53 @@ function pushHistory(get: () => ScriptState, set: (partial: Partial<ScriptState>
   }, 400)
 }
 
+function focusAfterHistory(
+  elements: ScreenplayElement[],
+  preferredId: string | null,
+  caret: CaretPosition | null,
+  fallbackId: string | null,
+): { selectedId: string | null; focusRequestId: string | null; focusCaret: CaretPosition | null } {
+  const id =
+    (preferredId && elements.some((el) => el.id === preferredId) ? preferredId : null) ??
+    (fallbackId && elements.some((el) => el.id === fallbackId) ? fallbackId : null) ??
+    elements[0]?.id ??
+    null
+
+  if (!id) {
+    return { selectedId: null, focusRequestId: null, focusCaret: null }
+  }
+
+  const element = elements.find((el) => el.id === id)
+  const max = element?.text.length ?? 0
+  const restoredCaret =
+    caret == null
+      ? { start: max, end: max }
+      : {
+          start: Math.min(Math.max(caret.start, 0), max),
+          end: Math.min(Math.max(caret.end, 0), max),
+        }
+
+  return {
+    selectedId: id,
+    focusRequestId: id,
+    focusCaret: restoredCaret,
+  }
+}
+
+function scrollElementIntoView(elementId: string | null) {
+  if (!elementId || typeof document === 'undefined') return
+  window.requestAnimationFrame(() => {
+    document
+      .querySelector(`[data-element-id="${elementId}"]`)
+      ?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  })
+}
+
 export const useScriptStore = create<ScriptState>((set, get) => ({
   doc: createSampleScript(),
   selectedId: null,
   focusRequestId: null,
+  focusCaret: null,
   saveStatus: 'idle',
   hydrated: false,
   dirty: false,
@@ -179,9 +247,10 @@ export const useScriptStore = create<ScriptState>((set, get) => ({
 
   selectElement: (id) => set({ selectedId: id }),
 
-  requestFocus: (id) => set({ selectedId: id, focusRequestId: id }),
+  requestFocus: (id, caret = null) =>
+    set({ selectedId: id, focusRequestId: id, focusCaret: caret }),
 
-  clearFocusRequest: () => set({ focusRequestId: null }),
+  clearFocusRequest: () => set({ focusRequestId: null, focusCaret: null }),
 
   updateElementText: (id, text) => {
     pushHistory(get, set)
@@ -222,7 +291,7 @@ export const useScriptStore = create<ScriptState>((set, get) => ({
     const nextType = cycleTabElementType(element.type, direction)
     get().setElementType(id, nextType)
     // Keep keyboard focus on the element after input/textarea remounts.
-    set({ selectedId: id, focusRequestId: id })
+    set({ selectedId: id, focusRequestId: id, focusCaret: null })
   },
 
   insertAfter: (id, type, text = '') => {
@@ -322,12 +391,18 @@ export const useScriptStore = create<ScriptState>((set, get) => ({
   },
 
   undo: () => {
-    const { undoStack, doc, redoStack } = get()
+    const { undoStack, doc, redoStack, selectedId } = get()
     if (undoStack.length === 0) return
     const previous = undoStack[undoStack.length - 1]!
+    const focus = focusAfterHistory(
+      previous.elements,
+      previous.selectedId,
+      previous.caret,
+      selectedId,
+    )
     set({
       undoStack: undoStack.slice(0, -1),
-      redoStack: [...redoStack, snapshotDoc(doc)],
+      redoStack: [...redoStack, snapshotDoc(doc, selectedId, captureCaret())],
       doc: {
         ...doc,
         title: previous.title,
@@ -335,17 +410,25 @@ export const useScriptStore = create<ScriptState>((set, get) => ({
         elements: cloneElements(previous.elements),
         updatedAt: Date.now(),
       },
+      ...focus,
     })
     scheduleAutosave(get, set)
+    scrollElementIntoView(focus.focusRequestId)
   },
 
   redo: () => {
-    const { redoStack, doc, undoStack } = get()
+    const { redoStack, doc, undoStack, selectedId } = get()
     if (redoStack.length === 0) return
     const next = redoStack[redoStack.length - 1]!
+    const focus = focusAfterHistory(
+      next.elements,
+      next.selectedId,
+      next.caret,
+      selectedId,
+    )
     set({
       redoStack: redoStack.slice(0, -1),
-      undoStack: [...undoStack, snapshotDoc(doc)],
+      undoStack: [...undoStack, snapshotDoc(doc, selectedId, captureCaret())],
       doc: {
         ...doc,
         title: next.title,
@@ -353,8 +436,10 @@ export const useScriptStore = create<ScriptState>((set, get) => ({
         elements: cloneElements(next.elements),
         updatedAt: Date.now(),
       },
+      ...focus,
     })
     scheduleAutosave(get, set)
+    scrollElementIntoView(focus.focusRequestId)
   },
 
   saveNow: async () => {
@@ -408,7 +493,7 @@ export const useScriptStore = create<ScriptState>((set, get) => ({
     if (matches.length === 0) return
     const safe = ((index % matches.length) + matches.length) % matches.length
     const match = matches[safe]!
-    set({ findMatchIndex: safe, selectedId: match.elementId, focusRequestId: match.elementId })
+    set({ findMatchIndex: safe, selectedId: match.elementId, focusRequestId: match.elementId, focusCaret: { start: match.start, end: match.end } })
     window.requestAnimationFrame(() => {
       document
         .querySelector(`[data-element-id="${match.elementId}"]`)

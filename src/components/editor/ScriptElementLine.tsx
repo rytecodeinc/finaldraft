@@ -44,6 +44,9 @@ export function ScriptElementLine({
   const deleteElement = useScriptStore((s) => s.deleteElement)
   const setElementType = useScriptStore((s) => s.setElementType)
   const clearFocusRequest = useScriptStore((s) => s.clearFocusRequest)
+  const focusCaret = useScriptStore((s) =>
+    s.focusRequestId === element.id ? s.focusCaret : null,
+  )
   const elements = useScriptStore((s) => s.doc.elements)
 
   const [menuOpen, setMenuOpen] = useState(false)
@@ -75,17 +78,19 @@ export function ScriptElementLine({
     }
   }, [element.text, element.type, isSingleLine])
 
-  // Restore focus after Tab type-cycles remount input ↔ textarea.
+  // Restore focus after Tab type-cycles / undo / redo.
   useLayoutEffect(() => {
     if (!shouldFocus) return
     const node = isSingleLine ? inputRef.current : textareaRef.current
     if (!node) return
     node.focus()
     const len = node.value.length
-    node.setSelectionRange(len, len)
+    const start = focusCaret ? Math.min(focusCaret.start, len) : len
+    const end = focusCaret ? Math.min(focusCaret.end, len) : len
+    node.setSelectionRange(start, end)
     cyclingTypeRef.current = false
     clearFocusRequest()
-  }, [shouldFocus, clearFocusRequest, isSingleLine, element.type])
+  }, [shouldFocus, clearFocusRequest, isSingleLine, element.type, focusCaret])
 
   useEffect(() => {
     setActiveSuggestion(0)
