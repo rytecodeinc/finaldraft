@@ -7,11 +7,17 @@ import { Sidebar } from '@/components/layout/Sidebar'
 import { StatusBar } from '@/components/layout/StatusBar'
 import { Toolbar } from '@/components/layout/Toolbar'
 import { useLayoutStore } from '@/stores/layoutStore'
+import { useScriptStore } from '@/stores/scriptStore'
 
 export function AppShell() {
   const toggleSidebar = useLayoutStore((s) => s.toggleSidebar)
   const toggleInspector = useLayoutStore((s) => s.toggleInspector)
   const toggleBottomPanel = useLayoutStore((s) => s.toggleBottomPanel)
+  const hydrate = useScriptStore((s) => s.hydrate)
+
+  useEffect(() => {
+    void hydrate()
+  }, [hydrate])
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
