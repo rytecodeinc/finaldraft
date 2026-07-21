@@ -89,7 +89,7 @@ export const ELEMENT_LABELS: Record<ElementType, string> = {
 export function createDefaultTitlePage(title = 'Untitled Screenplay'): TitlePageInfo {
   return {
     title,
-    credit: 'Written by',
+    credit: '',
     authors: '',
     basedOn: '',
     contact: '',

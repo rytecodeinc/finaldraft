@@ -44,10 +44,18 @@ export function normalizeScriptDocument(
 ): ScriptDocument {
   const sample = createSampleScript()
   const title = raw.titlePage?.title || raw.title || sample.title
-  const titlePage: TitlePageInfo = {
+  const mergedTitlePage = {
     ...createDefaultTitlePage(title),
     ...(raw.titlePage ?? {}),
     title,
+  }
+  // Legacy default stored "Written by" as a real value — treat as placeholder-only.
+  const titlePage: TitlePageInfo = {
+    ...mergedTitlePage,
+    credit:
+      mergedTitlePage.credit.trim().toLowerCase() === 'written by'
+        ? ''
+        : mergedTitlePage.credit,
   }
 
   const rawElements =

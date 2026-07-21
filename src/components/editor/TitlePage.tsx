@@ -43,7 +43,15 @@ function TitleField({
 }
 
 export function TitlePage() {
-  const titlePage = useScriptStore((s) => s.doc.titlePage)
+  // Subscribe to each field so inspector edits always re-render the page.
+  const title = useScriptStore((s) => s.doc.titlePage.title)
+  const credit = useScriptStore((s) => s.doc.titlePage.credit)
+  const authors = useScriptStore((s) => s.doc.titlePage.authors)
+  const basedOn = useScriptStore((s) => s.doc.titlePage.basedOn)
+  const contact = useScriptStore((s) => s.doc.titlePage.contact)
+  const copyright = useScriptStore((s) => s.doc.titlePage.copyright)
+  const draftDate = useScriptStore((s) => s.doc.titlePage.draftDate)
+  const revision = useScriptStore((s) => s.doc.titlePage.revision)
   const updateTitlePage = useScriptStore((s) => s.updateTitlePage)
 
   const set =
@@ -58,7 +66,7 @@ export function TitlePage() {
           <TitleField
             id="tp-revision"
             label="Revision"
-            value={titlePage.revision}
+            value={revision}
             onChange={set('revision')}
             placeholder="First Draft"
             className="title-page-revision"
@@ -66,7 +74,7 @@ export function TitlePage() {
           <TitleField
             id="tp-date"
             label="Draft date"
-            value={titlePage.draftDate}
+            value={draftDate}
             onChange={set('draftDate')}
             className="title-page-date"
           />
@@ -76,7 +84,7 @@ export function TitlePage() {
           <TitleField
             id="tp-title"
             label="Title"
-            value={titlePage.title}
+            value={title}
             onChange={set('title')}
             placeholder="UNTITLED SCREENPLAY"
             className="title-page-title"
@@ -84,7 +92,7 @@ export function TitlePage() {
           <TitleField
             id="tp-credit"
             label="Credit"
-            value={titlePage.credit}
+            value={credit}
             onChange={set('credit')}
             placeholder="Written by"
             className="title-page-credit"
@@ -92,7 +100,7 @@ export function TitlePage() {
           <TitleField
             id="tp-authors"
             label="Author(s)"
-            value={titlePage.authors}
+            value={authors}
             onChange={set('authors')}
             placeholder="Writer Name"
             className="title-page-authors"
@@ -100,7 +108,7 @@ export function TitlePage() {
           <TitleField
             id="tp-based"
             label="Based on"
-            value={titlePage.basedOn}
+            value={basedOn}
             onChange={set('basedOn')}
             placeholder="Based on the novel by…"
             className="title-page-based"
@@ -111,7 +119,7 @@ export function TitlePage() {
           <TitleField
             id="tp-contact"
             label="Contact"
-            value={titlePage.contact}
+            value={contact}
             onChange={set('contact')}
             multiline
             placeholder={'Name\nAddress\nPhone / Email'}
@@ -120,7 +128,7 @@ export function TitlePage() {
           <TitleField
             id="tp-copyright"
             label="Copyright"
-            value={titlePage.copyright}
+            value={copyright}
             onChange={set('copyright')}
             placeholder="© Year"
             className="title-page-copyright"
