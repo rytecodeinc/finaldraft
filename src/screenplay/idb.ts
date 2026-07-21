@@ -1,6 +1,7 @@
 import { createId } from './ids'
 import { pruneBlankElements } from './elementRules'
 import {
+  createBlankProject,
   createUntitledProject,
   LEGACY_ACTIVE_SCRIPT_KEY,
 } from './sampleScript'
@@ -413,6 +414,26 @@ export async function listProjects(): Promise<Project[]> {
   return projects
     .map((p) => normalizeProject(p, p.scriptId))
     .sort((a, b) => b.updatedAt - a.updatedAt)
+}
+
+/** Persist a brand-new project + script and make it active. */
+export async function createProjectBundle(
+  name?: string,
+): Promise<{ project: Project; script: ScriptDocument }> {
+  const { project, script } = createBlankProject(name)
+  await withStores(
+    [SCRIPTS_STORE, PROJECTS_STORE, WORKSPACE_STORE],
+    'readwrite',
+    (stores) => {
+      stores[SCRIPTS_STORE]!.put(script)
+      stores[PROJECTS_STORE]!.put(project)
+      stores[WORKSPACE_STORE]!.put({
+        id: 'workspace',
+        activeProjectId: project.id,
+      } satisfies WorkspaceMeta)
+    },
+  )
+  return { project, script }
 }
 
 /** Load a project + its script without changing the active workspace. */

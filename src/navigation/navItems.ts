@@ -202,3 +202,54 @@ export function isScriptPath(pathname: string): boolean {
     pathname.startsWith('/script')
   )
 }
+
+export type PrimaryCreateAction =
+  | 'project'
+  | 'scene'
+  | 'character'
+  | 'location'
+  | 'note'
+
+/** Toolbar primary CTA based on the current route. */
+export function getPrimaryCreateAction(
+  pathname: string,
+): PrimaryCreateAction {
+  if (
+    pathname === '/projects' ||
+    pathname.startsWith('/projects/') ||
+    pathname === '/'
+  ) {
+    return 'project'
+  }
+
+  const story = parseProjectPath(pathname)
+  if (story?.view === 'characters') return 'character'
+  if (story?.view === 'locations') return 'location'
+  if (story?.view === 'notes') return 'note'
+  if (story?.view === 'outline' || story?.view === 'script') return 'scene'
+
+  if (pathname.startsWith('/characters')) return 'character'
+  if (pathname.startsWith('/locations')) return 'location'
+  if (pathname.startsWith('/notes')) return 'note'
+  if (pathname.startsWith('/outline') || pathname.startsWith('/script')) {
+    return 'scene'
+  }
+
+  return 'scene'
+}
+
+export function primaryCreateLabel(action: PrimaryCreateAction): string {
+  switch (action) {
+    case 'project':
+      return 'New Project'
+    case 'character':
+      return 'New Character'
+    case 'location':
+      return 'New Location'
+    case 'note':
+      return 'New Note'
+    case 'scene':
+    default:
+      return 'New Scene'
+  }
+}

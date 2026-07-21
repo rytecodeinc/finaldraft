@@ -12,10 +12,14 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/Button'
 import { IconButton } from '@/components/ui/IconButton'
 import {
+  characterPath,
   getNavItemByPath,
+  getPrimaryCreateAction,
   isScriptPath,
   parseProjectDetailPath,
   parseProjectPath,
+  primaryCreateLabel,
+  projectDetailPath,
   projectPath,
 } from '@/navigation/navItems'
 import { useLayoutStore } from '@/stores/layoutStore'
@@ -47,10 +51,16 @@ export function Toolbar() {
   const undo = useScriptStore((s) => s.undo)
   const redo = useScriptStore((s) => s.redo)
   const addScene = useScriptStore((s) => s.addScene)
+  const addCharacter = useScriptStore((s) => s.addCharacter)
+  const addLocation = useScriptStore((s) => s.addLocation)
+  const createProject = useScriptStore((s) => s.createProject)
   const openFind = useScriptStore((s) => s.openFind)
   const findOpen = useScriptStore((s) => s.findOpen)
   const canUndo = useScriptStore((s) => s.undoStack.length > 0)
   const canRedo = useScriptStore((s) => s.redoStack.length > 0)
+
+  const createAction = getPrimaryCreateAction(location.pathname)
+  const createLabel = primaryCreateLabel(createAction)
 
   const saveLabel =
     saveStatus === 'saving'
@@ -72,6 +82,52 @@ export function Toolbar() {
     }
     return `${projectName} > ${current?.label ?? 'Story'}`
   })()
+
+  const handlePrimaryCreate = () => {
+    switch (createAction) {
+      case 'project': {
+        void (async () => {
+          const id = await createProject()
+          navigate(projectDetailPath(id))
+        })()
+        return
+      }
+      case 'character': {
+        const name = addCharacter()
+        navigate(characterPath(projectId, name))
+        return
+      }
+      case 'location': {
+        addLocation()
+        if (projectRoute?.view !== 'locations') {
+          navigate(projectPath(projectId, 'locations'))
+        }
+        return
+      }
+      case 'note': {
+        if (projectRoute?.view !== 'notes') {
+          navigate(projectPath(projectId, 'notes'))
+        }
+        return
+      }
+      case 'scene':
+      default: {
+        if (!onScript && projectRoute?.view !== 'outline') {
+          navigate(projectPath(projectId, 'script'))
+          window.setTimeout(() => addScene(), 0)
+          return
+        }
+        addScene()
+        if (projectRoute?.view === 'outline') {
+          // Stay on outline; selection updates via directorySelection.
+          return
+        }
+        if (!onScript) {
+          navigate(projectPath(projectId, 'script'))
+        }
+      }
+    }
+  }
 
   return (
     <div className="toolbar" role="toolbar" aria-label="Editor toolbar">
@@ -144,19 +200,8 @@ export function Toolbar() {
         >
           <PanelRight size={16} strokeWidth={1.75} />
         </IconButton>
-        <Button
-          variant="primary"
-          onClick={() => {
-            const scriptTo = projectPath(projectId, 'script')
-            if (!onScript) {
-              navigate(scriptTo)
-              window.setTimeout(() => addScene(), 0)
-              return
-            }
-            addScene()
-          }}
-        >
-          New Scene
+        <Button variant="primary" onClick={handlePrimaryCreate}>
+          {createLabel}
         </Button>
       </div>
     </div>

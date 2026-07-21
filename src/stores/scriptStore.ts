@@ -19,12 +19,14 @@ import {
 } from '@/screenplay/elementRules'
 import { findInScript, type FindMatch, type FindTypeFilter } from '@/screenplay/findScript'
 import {
+  createProjectBundle,
   loadWorkspace,
   saveProject,
   saveScriptDocument,
   setActiveProjectId,
 } from '@/screenplay/idb'
 import { createUntitledProject } from '@/screenplay/sampleScript'
+import { createEmptyCharacterProfile } from '@/screenplay/types'
 import type {
   CharacterProfile,
   ElementComment,
@@ -36,7 +38,6 @@ import type {
   ScriptDocument,
   TitlePageInfo,
 } from '@/screenplay/types'
-import { createEmptyCharacterProfile } from '@/screenplay/types'
 
 const MAX_HISTORY = 80
 const AUTOSAVE_MS = 700
@@ -102,6 +103,8 @@ interface ScriptState {
   activeCommentId: string | null
   hydrate: () => Promise<void>
   openProject: (projectId: string) => Promise<void>
+  /** Create a blank project, activate it, and return its id. */
+  createProject: () => Promise<string>
   renameProject: (name: string) => void
   /** Update dossier fields for any project (active or not). */
   updateProject: (
@@ -135,6 +138,10 @@ interface ScriptState {
   handleEnter: (id: string) => string | null
   deleteElement: (id: string) => string | null
   addScene: () => string
+  /** Insert a new speaking character cue + empty dialogue; returns cue name. */
+  addCharacter: () => string
+  /** Insert a scene heading for a new location; returns location name. */
+  addLocation: () => string
   updateSceneMeta: (sceneElementId: string, patch: SceneMetaPatch) => void
   setPageCount: (pageCount: number) => void
   setViewPage: (viewPage: 'title' | number) => void
@@ -378,6 +385,39 @@ export const useScriptStore = create<ScriptState>((set, get) => {
       activeCommentId: null,
       viewPage: 'title',
     })
+  },
+
+  createProject: async () => {
+    const existingNames = new Set(
+      get().projects.map((p) => p.name.trim().toLowerCase()),
+    )
+    let name = 'Untitled Project'
+    let n = 2
+    while (existingNames.has(name.toLowerCase())) {
+      name = `Untitled Project ${n}`
+      n += 1
+    }
+
+    const { project, script } = await createProjectBundle(name)
+    set((state) => ({
+      project,
+      doc: script,
+      projects: [project, ...state.projects.filter((p) => p.id !== project.id)],
+      selectedId: null,
+      directorySelection: null,
+      focusRequestId: null,
+      focusCaret: null,
+      scrollRequestId: null,
+      dirty: false,
+      saveStatus: 'saved',
+      undoStack: [],
+      redoStack: [],
+      commentDraft: null,
+      activeCommentId: null,
+      viewPage: 'title',
+      findOpen: false,
+    }))
+    return project.id
   },
 
   renameProject: (name) => {
@@ -746,9 +786,76 @@ export const useScriptStore = create<ScriptState>((set, get) => {
       },
       selectedId: heading.id,
       focusRequestId: heading.id,
+      scrollRequestId: heading.id,
+      directorySelection: { kind: 'scene', sceneId: heading.id },
     }))
     scheduleAutosave(get, set)
     return heading.id
+  },
+
+  addCharacter: () => {
+    const existing = new Set(collectCharacterNames(get().doc.elements))
+    let name = 'NEW CHARACTER'
+    let n = 2
+    while (existing.has(name)) {
+      name = `NEW CHARACTER ${n}`
+      n += 1
+    }
+
+    pushHistory(get, set)
+    const cue = createElement('character', name)
+    const dialogue = createElement('dialogue', '')
+    const profile = createEmptyCharacterProfile(name)
+    set((state) => {
+      const profiles = state.doc.characterProfiles ?? []
+      const hasProfile = profiles.some((p) => p.name === name)
+      return {
+        doc: {
+          ...state.doc,
+          elements: [...state.doc.elements, cue, dialogue],
+          characterProfiles: hasProfile ? profiles : [...profiles, profile],
+          updatedAt: Date.now(),
+        },
+        selectedId: cue.id,
+        focusRequestId: cue.id,
+        directorySelection: { kind: 'character', name },
+      }
+    })
+    scheduleAutosave(get, set)
+    return name
+  },
+
+  addLocation: () => {
+    const existing = new Set(collectLocationNames(get().doc.elements))
+    let location = 'NEW LOCATION'
+    let n = 2
+    while (existing.has(location)) {
+      location = `NEW LOCATION ${n}`
+      n += 1
+    }
+
+    pushHistory(get, set)
+    const heading = createElement(
+      'sceneHeading',
+      composeSceneHeading({
+        intExt: 'INT.',
+        location,
+        timeOfDay: 'DAY',
+      }),
+    )
+    const action = createElement('action', '')
+    set((state) => ({
+      doc: {
+        ...state.doc,
+        elements: [...state.doc.elements, heading, action],
+        updatedAt: Date.now(),
+      },
+      selectedId: heading.id,
+      focusRequestId: heading.id,
+      directorySelection: { kind: 'location', name: location },
+    }))
+    scheduleAutosave(get, set)
+    return location
   },
 
   updateSceneMeta: (sceneElementId, patch) => {

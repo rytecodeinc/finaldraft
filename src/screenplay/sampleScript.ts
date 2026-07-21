@@ -60,22 +60,62 @@ export function createSampleScript(projectId: string, scriptId?: string): Script
   }
 }
 
+function buildProjectShell(
+  name: string,
+  script: ScriptDocument,
+): Project {
+  const now = Date.now()
+  return {
+    id: script.projectId,
+    name,
+    format: 'feature',
+    scriptId: script.id,
+    createdAt: now,
+    updatedAt: now,
+    ...createDefaultProjectFields(),
+  }
+}
+
+/** First-run / migration seed with sample pages. */
 export function createUntitledProject(): {
+  project: Project
+  script: ScriptDocument
+} {
+  const projectId = createId('proj')
+  const scriptId = createId('script')
+  const script = createSampleScript(projectId, scriptId)
+  return {
+    project: buildProjectShell('Untitled', script),
+    script,
+  }
+}
+
+/** Fresh project for the New Project action — empty writing surface. */
+export function createBlankProject(name = 'Untitled Project'): {
   project: Project
   script: ScriptDocument
 } {
   const now = Date.now()
   const projectId = createId('proj')
   const scriptId = createId('script')
-  const script = createSampleScript(projectId, scriptId)
-  const project: Project = {
-    id: projectId,
-    name: 'Untitled',
+  const title = 'Untitled Screenplay'
+  const script: ScriptDocument = {
+    id: scriptId,
+    projectId,
+    title,
     format: 'feature',
-    scriptId,
+    titlePage: createDefaultTitlePage(title),
     createdAt: now,
     updatedAt: now,
-    ...createDefaultProjectFields(),
+    comments: [],
+    characterProfiles: [],
+    elements: [
+      createElement('sceneHeading', 'INT. LOCATION - DAY'),
+      createElement('action', ''),
+    ],
   }
-  return { project, script }
+  return {
+    project: buildProjectShell(name, script),
+    script,
+  }
 }
