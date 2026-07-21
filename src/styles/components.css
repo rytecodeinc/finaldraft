@@ -122,11 +122,10 @@
 
 .toolbar-label {
   margin-left: 6px;
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--text-muted);
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  letter-spacing: 0.01em;
   max-width: min(420px, 46vw);
   overflow: hidden;
   text-overflow: ellipsis;
