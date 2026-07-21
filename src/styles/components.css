@@ -1630,6 +1630,7 @@
 .title-page-top {
   display: flex;
   justify-content: space-between;
+  align-items: flex-start;
   gap: 16px;
 }
 
@@ -1644,10 +1645,15 @@
 }
 
 .title-page-bottom {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 20px;
-  align-items: end;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 24px;
+}
+
+.title-page-contact {
+  flex: 1;
+  max-width: 48%;
 }
 
 .title-page-field {
@@ -1719,18 +1725,43 @@
   font-size: 13px;
 }
 
-.title-page-copyright input {
-  text-align: right;
-  font-size: 13px;
+.title-page-revision {
+  flex: 0 1 auto;
+  max-width: 48%;
 }
 
-.title-page-revision,
 .title-page-date {
-  max-width: 42%;
+  flex: 0 1 auto;
+  max-width: 48%;
+  margin-left: auto;
+  align-items: flex-end;
+}
+
+.title-page-date .title-page-field-label {
+  text-align: right;
+  white-space: nowrap;
 }
 
 .title-page-date input {
   text-align: right;
+  min-width: 12ch;
+}
+
+.title-page-copyright {
+  flex: 0 1 auto;
+  max-width: 42%;
+  align-items: flex-end;
+}
+
+.title-page-copyright .title-page-field-label {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.title-page-copyright input {
+  text-align: right;
+  font-size: 13px;
+  min-width: 10ch;
 }
 
 .smarttype-menu {
@@ -1811,7 +1842,23 @@
   }
 
   .title-page-bottom {
-    grid-template-columns: 1fr;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .title-page-contact,
+  .title-page-copyright {
+    max-width: none;
+    width: 100%;
+  }
+
+  .title-page-copyright {
+    align-items: flex-start;
+  }
+
+  .title-page-copyright .title-page-field-label,
+  .title-page-copyright input {
+    text-align: left;
   }
 }
 
