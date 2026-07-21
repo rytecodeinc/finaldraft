@@ -103,6 +103,13 @@ interface ScriptState {
   hydrate: () => Promise<void>
   openProject: (projectId: string) => Promise<void>
   renameProject: (name: string) => void
+  /** Update dossier fields for any project (active or not). */
+  updateProject: (
+    projectId: string,
+    patch: Partial<
+      Omit<Project, 'id' | 'scriptId' | 'createdAt' | 'updatedAt'>
+    >,
+  ) => void
   reorderScene: (sceneId: string, beforeSceneId: string | null) => void
   renameScene: (sceneId: string, heading: string) => void
   renameCharacter: (fromName: string, toName: string) => void
@@ -375,12 +382,33 @@ export const useScriptStore = create<ScriptState>((set, get) => {
 
   renameProject: (name) => {
     const trimmed = name.trim() || 'Untitled'
-    const project = { ...get().project, name: trimmed, updatedAt: Date.now() }
+    get().updateProject(get().project.id, { name: trimmed })
+  },
+
+  updateProject: (projectId, patch) => {
+    const existing =
+      get().projects.find((p) => p.id === projectId) ??
+      (get().project.id === projectId ? get().project : null)
+    if (!existing) return
+
+    const next: Project = {
+      ...existing,
+      ...patch,
+      id: existing.id,
+      scriptId: existing.scriptId,
+      createdAt: existing.createdAt,
+      updatedAt: Date.now(),
+      name:
+        typeof patch.name === 'string'
+          ? patch.name.trim() || existing.name
+          : existing.name,
+    }
+
     set((state) => ({
-      project,
-      projects: state.projects.map((p) => (p.id === project.id ? project : p)),
+      project: state.project.id === projectId ? next : state.project,
+      projects: state.projects.map((p) => (p.id === projectId ? next : p)),
     }))
-    void saveProject(project)
+    void saveProject(next)
   },
 
   reorderScene: (sceneId, beforeSceneId) => {

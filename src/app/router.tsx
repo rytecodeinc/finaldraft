@@ -8,6 +8,7 @@ import { DashboardPage } from '@/pages/DashboardPage'
 import { LocationsPage } from '@/pages/LocationsPage'
 import { NotesPage } from '@/pages/NotesPage'
 import { OutlinePage } from '@/pages/OutlinePage'
+import { ProjectDetailPage } from '@/pages/ProjectDetailPage'
 import { ProjectsPage } from '@/pages/ProjectsPage'
 import { ReportsPage } from '@/pages/ReportsPage'
 import { RevisionsPage } from '@/pages/RevisionsPage'
@@ -33,6 +34,7 @@ export function AppRouter() {
       <Route element={<AppShell />}>
         <Route index element={<DashboardPage />} />
         <Route path="projects" element={<ProjectsPage />} />
+        <Route path="projects/:projectId" element={<ProjectDetailPage />} />
 
         <Route path="p/:projectId" element={<ProjectRouteGate />}>
           <Route path="script" element={<ScriptPage />} />

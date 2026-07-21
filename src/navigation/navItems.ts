@@ -136,6 +136,19 @@ export function projectPath(projectId: string, view: StoryView): string {
   return `/p/${projectId}/${view}`
 }
 
+/** Workspace project overview (not the active story shell). */
+export function projectDetailPath(projectId: string): string {
+  return `/projects/${projectId}`
+}
+
+export function parseProjectDetailPath(
+  pathname: string,
+): { projectId: string } | null {
+  const match = pathname.match(/^\/projects\/([^/?#]+)\/?$/)
+  if (!match) return null
+  return { projectId: match[1]! }
+}
+
 /** Character detail under Characters. Name is URL-encoded uppercase cue name. */
 export function characterPath(projectId: string, name: string): string {
   return `${projectPath(projectId, 'characters')}/${encodeURIComponent(

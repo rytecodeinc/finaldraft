@@ -1,6 +1,10 @@
 import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { projectPath } from '@/navigation/navItems'
+import { projectDetailPath } from '@/navigation/navItems'
+import {
+  PROJECT_FORMAT_LABELS,
+  PROJECT_STATUS_LABELS,
+} from '@/screenplay/types'
 import { useScriptStore } from '@/stores/scriptStore'
 
 export function ProjectsPage() {
@@ -8,8 +12,6 @@ export function ProjectsPage() {
   const hydrate = useScriptStore((s) => s.hydrate)
   const projects = useScriptStore((s) => s.projects)
   const activeId = useScriptStore((s) => s.project.id)
-  const openProject = useScriptStore((s) => s.openProject)
-  const renameProject = useScriptStore((s) => s.renameProject)
   const docTitle = useScriptStore((s) => s.doc.title)
 
   useEffect(() => {
@@ -23,8 +25,8 @@ export function ProjectsPage() {
           <p className="page-kicker">Workspace</p>
           <h1 className="page-title">Projects</h1>
           <p className="page-desc">
-            Each project contains one screenplay. Outline, characters, and
-            locations are generated from that script.
+            Each project contains one screenplay. Open a project for its
+            dashboard, then jump into script, outline, characters, or locations.
           </p>
         </header>
 
@@ -39,37 +41,16 @@ export function ProjectsPage() {
                   <div className="derived-main">
                     <Link
                       className="derived-title-btn"
-                      to={projectPath(project.id, 'script')}
-                      onClick={() => {
-                        if (!active) void openProject(project.id)
-                      }}
+                      to={projectDetailPath(project.id)}
                     >
                       {project.name}
                     </Link>
                     <div className="derived-meta">
                       {active
-                        ? `Active · ${docTitle.trim() || 'Untitled Screenplay'}`
-                        : `Updated ${new Date(project.updatedAt).toLocaleDateString()}`}
+                        ? `Active · ${docTitle.trim() || 'Untitled Screenplay'} · ${PROJECT_STATUS_LABELS[project.status]}`
+                        : `${PROJECT_FORMAT_LABELS[project.format]} · ${PROJECT_STATUS_LABELS[project.status]} · Updated ${new Date(project.updatedAt).toLocaleDateString()}`}
                     </div>
                   </div>
-                  {active ? (
-                    <input
-                      className="derived-input derived-input--inline"
-                      defaultValue={project.name}
-                      aria-label="Rename project"
-                      onBlur={(e) => {
-                        const next = e.target.value.trim()
-                        if (next && next !== project.name) {
-                          renameProject(next)
-                        }
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          ;(e.target as HTMLInputElement).blur()
-                        }
-                      }}
-                    />
-                  ) : null}
                 </li>
               )
             })}

@@ -14,6 +14,7 @@ import { IconButton } from '@/components/ui/IconButton'
 import {
   getNavItemByPath,
   isScriptPath,
+  parseProjectDetailPath,
   parseProjectPath,
   projectPath,
 } from '@/navigation/navItems'
@@ -25,9 +26,11 @@ export function Toolbar() {
   const navigate = useNavigate()
   const current = getNavItemByPath(location.pathname)
   const projectRoute = parseProjectPath(location.pathname)
+  const projectDetailRoute = parseProjectDetailPath(location.pathname)
   const onScript = isScriptPath(location.pathname)
   const projectName = useScriptStore((s) => s.project.name)
   const projectId = useScriptStore((s) => s.project.id)
+  const projects = useScriptStore((s) => s.projects)
 
   const sidebarOpen = useLayoutStore((s) => s.sidebarOpen)
   const inspectorOpen = useLayoutStore((s) => s.inspectorOpen)
@@ -57,6 +60,12 @@ export function Toolbar() {
         : 'Save script'
 
   const toolbarLabel = (() => {
+    if (projectDetailRoute) {
+      const named =
+        projects.find((p) => p.id === projectDetailRoute.projectId)?.name ??
+        (projectId === projectDetailRoute.projectId ? projectName : null)
+      return named ? `Projects > ${named}` : 'Projects'
+    }
     if (!projectRoute) return current?.label ?? 'SceneDesk'
     if (projectRoute.view === 'characters' && projectRoute.detail) {
       return `${projectName} > Characters > ${projectRoute.detail}`

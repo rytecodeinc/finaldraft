@@ -1,6 +1,7 @@
 import { createElement } from './elementRules'
 import { createId } from './ids'
 import {
+  createDefaultProjectFields,
   createDefaultTitlePage,
   type Project,
   type ScriptDocument,
@@ -74,6 +75,7 @@ export function createUntitledProject(): {
     scriptId,
     createdAt: now,
     updatedAt: now,
+    ...createDefaultProjectFields(),
   }
   return { project, script }
 }

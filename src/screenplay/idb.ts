@@ -5,10 +5,15 @@ import {
   LEGACY_ACTIVE_SCRIPT_KEY,
 } from './sampleScript'
 import {
+  createDefaultProjectFields,
   createDefaultTitlePage,
   createEmptyCharacterProfile,
+  PROJECT_FORMATS,
+  PROJECT_STATUSES,
   type CharacterProfile,
   type Project,
+  type ProjectFormat,
+  type ProjectStatus,
   type ScriptDocument,
   type TitlePageInfo,
   type WorkspaceMeta,
@@ -201,11 +206,24 @@ export function normalizeScriptDocument(
   }
 }
 
+function normalizeProjectFormat(value: unknown): ProjectFormat {
+  return PROJECT_FORMATS.includes(value as ProjectFormat)
+    ? (value as ProjectFormat)
+    : 'feature'
+}
+
+function normalizeProjectStatus(value: unknown): ProjectStatus {
+  return PROJECT_STATUSES.includes(value as ProjectStatus)
+    ? (value as ProjectStatus)
+    : 'drafting'
+}
+
 function normalizeProject(
   raw: Partial<Project>,
   scriptId: string,
 ): Project {
   const now = Date.now()
+  const defaults = createDefaultProjectFields()
   return {
     id:
       typeof raw.id === 'string' && raw.id.length > 0
@@ -215,10 +233,26 @@ function normalizeProject(
       typeof raw.name === 'string' && raw.name.trim().length > 0
         ? raw.name.trim()
         : 'Untitled',
-    format: 'feature',
+    format: normalizeProjectFormat(raw.format),
     scriptId,
     createdAt: raw.createdAt ?? now,
     updatedAt: raw.updatedAt ?? now,
+    genre: typeof raw.genre === 'string' ? raw.genre : defaults.genre,
+    status: normalizeProjectStatus(raw.status),
+    coverImage:
+      typeof raw.coverImage === 'string' ? raw.coverImage : defaults.coverImage,
+    author: typeof raw.author === 'string' ? raw.author : defaults.author,
+    writingGoals:
+      typeof raw.writingGoals === 'string'
+        ? raw.writingGoals
+        : defaults.writingGoals,
+    targetPages:
+      typeof raw.targetPages === 'number' &&
+      Number.isFinite(raw.targetPages) &&
+      raw.targetPages > 0
+        ? Math.floor(raw.targetPages)
+        : 0,
+    notes: typeof raw.notes === 'string' ? raw.notes : defaults.notes,
   }
 }
 
@@ -379,6 +413,31 @@ export async function listProjects(): Promise<Project[]> {
   return projects
     .map((p) => normalizeProject(p, p.scriptId))
     .sort((a, b) => b.updatedAt - a.updatedAt)
+}
+
+/** Load a project + its script without changing the active workspace. */
+export async function loadProjectBundle(
+  projectId: string,
+): Promise<{ project: Project; script: ScriptDocument } | null> {
+  const projects = await getAllProjects()
+  const rawProject = projects.find((p) => p.id === projectId)
+  if (!rawProject) return null
+
+  const project = normalizeProject(rawProject, rawProject.scriptId)
+  const scripts = await getAllScripts()
+  let script = scripts.find((s) => s.id === project.scriptId)
+
+  if (!script || !Array.isArray(script.elements) || script.elements.length === 0) {
+    script = normalizeScriptDocument(
+      { projectId: project.id, id: project.scriptId },
+      project.id,
+    )
+    script.id = project.scriptId
+  } else {
+    script = normalizeScriptDocument(script, project.id)
+  }
+
+  return { project, script }
 }
 
 /** @deprecated Use loadWorkspace / saveScriptDocument */

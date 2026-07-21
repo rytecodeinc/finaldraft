@@ -98,14 +98,86 @@ export interface ScriptDocument {
   updatedAt: number
 }
 
+export const PROJECT_FORMATS = [
+  'feature',
+  'television',
+  'stage',
+  'short',
+  'webseries',
+  'other',
+] as const
+
+export type ProjectFormat = (typeof PROJECT_FORMATS)[number]
+
+export const PROJECT_FORMAT_LABELS: Record<ProjectFormat, string> = {
+  feature: 'Feature film',
+  television: 'Television episode',
+  stage: 'Stage play',
+  short: 'Short film',
+  webseries: 'Web series',
+  other: 'Other',
+}
+
+export const PROJECT_STATUSES = [
+  'ideation',
+  'outlining',
+  'drafting',
+  'rewriting',
+  'polished',
+  'production',
+] as const
+
+export type ProjectStatus = (typeof PROJECT_STATUSES)[number]
+
+export const PROJECT_STATUS_LABELS: Record<ProjectStatus, string> = {
+  ideation: 'Ideation',
+  outlining: 'Outlining',
+  drafting: 'Drafting',
+  rewriting: 'Rewriting',
+  polished: 'Polished',
+  production: 'In production',
+}
+
 /** A project owns exactly one script (for now). */
 export interface Project {
   id: string
   name: string
-  format: 'feature'
+  format: ProjectFormat
   scriptId: string
   createdAt: number
   updatedAt: number
+  /** Writer-owned project dossier fields. */
+  genre: string
+  status: ProjectStatus
+  /** Cover image URL; empty shows a generated placeholder. */
+  coverImage: string
+  /** Display author; falls back to script title-page authors when empty. */
+  author: string
+  writingGoals: string
+  /** Target page count for completion %; 0 means unset. */
+  targetPages: number
+  notes: string
+}
+
+export function createDefaultProjectFields(): Pick<
+  Project,
+  | 'genre'
+  | 'status'
+  | 'coverImage'
+  | 'author'
+  | 'writingGoals'
+  | 'targetPages'
+  | 'notes'
+> {
+  return {
+    genre: '',
+    status: 'drafting',
+    coverImage: '',
+    author: '',
+    writingGoals: '',
+    targetPages: 0,
+    notes: '',
+  }
 }
 
 /** Workspace pointer — which project is open. */

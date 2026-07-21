@@ -476,3 +476,100 @@ export function estimatePageCount(elements: ScreenplayElement[]): number {
   }, 0)
   return Math.max(1, Math.ceil(lines / 55))
 }
+
+function countWordsInText(text: string): number {
+  const trimmed = text.trim()
+  if (!trimmed) return 0
+  return trimmed.split(/\s+/).length
+}
+
+export interface ScreenplayAnalytics {
+  pageCount: number
+  wordCount: number
+  estimatedRuntimeMinutes: number
+  sceneCount: number
+  characterCount: number
+  locationCount: number
+  dialoguePercent: number
+  actionPercent: number
+  averageSceneLengthLines: number
+  /** Count of ACT markers in the script; null if none tagged. */
+  actCount: number | null
+  /** Count of SEQUENCE markers; null if none tagged. */
+  sequenceCount: number | null
+  contentLines: number
+  dialogueLines: number
+  actionLines: number
+}
+
+/**
+ * Aggregate screenplay analytics derived from elements.
+ * Percentages use estimated line counts (same basis as page estimate).
+ */
+export function getScreenplayAnalytics(
+  elements: ScreenplayElement[],
+): ScreenplayAnalytics {
+  let contentLines = 0
+  let dialogueLines = 0
+  let actionLines = 0
+  let wordCount = 0
+  let actMarkers = 0
+  let sequenceMarkers = 0
+
+  for (const el of elements) {
+    const text = el.text.trim()
+    wordCount += countWordsInText(el.text)
+
+    const upper = text.toUpperCase()
+    if (/\bACT\s+[IVXLC\d]+\b/.test(upper) || /^ACT\s+[IVXLC\d]+/.test(upper)) {
+      actMarkers += 1
+    }
+    if (/\bSEQUENCE\b/.test(upper)) {
+      sequenceMarkers += 1
+    }
+
+    const len = Math.max(el.text.length, 1)
+    const charsPerLine =
+      el.type === 'dialogue' || el.type === 'parenthetical'
+        ? 35
+        : el.type === 'character'
+          ? 20
+          : 60
+    const lines = Math.max(1, Math.ceil(len / charsPerLine))
+
+    if (el.type === 'dialogue' || el.type === 'parenthetical') {
+      dialogueLines += lines
+      contentLines += lines
+    } else if (el.type === 'action' || el.type === 'sceneHeading') {
+      actionLines += lines
+      contentLines += lines
+    } else if (el.type === 'character' || el.type === 'transition') {
+      contentLines += lines
+    }
+  }
+
+  const scenes = extractScenes(elements)
+  const sceneCount = scenes.length
+  const pageCount = estimatePageCount(elements)
+  const safeContent = Math.max(contentLines, 1)
+
+  return {
+    pageCount,
+    wordCount,
+    estimatedRuntimeMinutes: pageCount,
+    sceneCount,
+    characterCount: collectCharacterNames(elements).length,
+    locationCount: collectLocationNames(elements).length,
+    dialoguePercent: Math.round((dialogueLines / safeContent) * 100),
+    actionPercent: Math.round((actionLines / safeContent) * 100),
+    averageSceneLengthLines:
+      sceneCount === 0
+        ? 0
+        : Math.round(safeContent / sceneCount),
+    actCount: actMarkers > 0 ? actMarkers : null,
+    sequenceCount: sequenceMarkers > 0 ? sequenceMarkers : null,
+    contentLines,
+    dialogueLines,
+    actionLines,
+  }
+}
