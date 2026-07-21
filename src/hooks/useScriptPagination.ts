@@ -2,14 +2,22 @@ import { useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { getPageBreakChrome } from '@/screenplay/pageChrome'
 import type { ScreenplayElement } from '@/screenplay/types'
 
-/** US Letter content box height after vertical padding (96dpi). */
-export const PAGE_CONTENT_HEIGHT_PX = 864 // 11in - 2in
+/**
+ * Fallback usable body height for a US Letter page at 96dpi:
+ * 11in − 1in top − 1in bottom − reserve for (MORE)/(CONT'D) and subpixel rounding.
+ */
+export const PAGE_CONTENT_HEIGHT_PX = 11 * 96 - 2 * 96 - 48 // 816
 
-export type PageSlice = {
-  pageNumber: number
-  elements: ScreenplayElement[]
-  showMore: boolean
-  continuedCharacter: string | null
+/** Extra headroom so the last line is never half-clipped by overflow:hidden. */
+const PACK_SAFETY_PX = 8
+
+function resolveContentBudget(): number {
+  const body = document.querySelector('.script-page--live .script-page-body')
+  if (body instanceof HTMLElement && body.clientHeight > 200) {
+    // Body already excludes page padding. Reserve room for page chrome + rounding.
+    return Math.max(body.clientHeight - 48, 400)
+  }
+  return PAGE_CONTENT_HEIGHT_PX
 }
 
 function packElementIds(
@@ -19,6 +27,7 @@ function packElementIds(
 ): string[][] {
   if (elementIds.length === 0) return [[]]
 
+  const limit = Math.max(maxHeight - PACK_SAFETY_PX, 200)
   const pages: string[][] = []
   let current: string[] = []
   let used = 0
@@ -26,7 +35,7 @@ function packElementIds(
   elementIds.forEach((id, index) => {
     const height = Math.max(heights[index] ?? 28, 24)
 
-    if (current.length > 0 && used + height > maxHeight) {
+    if (current.length > 0 && used + height > limit) {
       pages.push(current)
       current = []
       used = 0
@@ -41,6 +50,13 @@ function packElementIds(
   }
 
   return pages
+}
+
+export type PageSlice = {
+  pageNumber: number
+  elements: ScreenplayElement[]
+  showMore: boolean
+  continuedCharacter: string | null
 }
 
 function samePages(a: string[][], b: string[][]): boolean {
@@ -159,7 +175,7 @@ export function useScriptPagination(elements: ScreenplayElement[]) {
       const sig = `${measureKey}::${heights.join(',')}`
       if (sig === lastSigRef.current) return
 
-      const next = packElementIds(elementIds, heights, PAGE_CONTENT_HEIGHT_PX)
+      const next = packElementIds(elementIds, heights, resolveContentBudget())
 
       setPageIdGroups((prev) => {
         if (samePages(prev, next)) {

@@ -1199,7 +1199,8 @@ button.placeholder-block {
   height: 11in;
   min-height: 11in;
   max-height: 11in;
-  padding: 1in 1in 0.9in 1.25in;
+  /* Top / right / bottom / left — keep a full 1in bottom so the last line is not clipped. */
+  padding: 1in 1in 1in 1.25in;
   box-sizing: border-box;
   background: var(--bg-elevated);
   border: 1px solid var(--border-subtle);
@@ -1236,7 +1237,7 @@ button.placeholder-block {
 .script-page-number {
   position: absolute;
   right: 1in;
-  bottom: 0.45in;
+  bottom: 0.5in;
   margin: 0;
   font-family: var(--font-script);
   font-size: 12pt;
