@@ -309,7 +309,6 @@ export function ScriptElementLine({
       element.type,
       elements,
       handleEnter,
-      menuNavigated,
       menuOpen,
       setElementType,
       suggestions,
