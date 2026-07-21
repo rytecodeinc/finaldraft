@@ -9,6 +9,7 @@ import {
   extractScenes,
   findSceneForElement,
   formatElementText,
+  isBlankElement,
   parseSceneHeading,
   pruneBlankElements,
 } from '@/screenplay/elementRules'
@@ -412,13 +413,17 @@ export const useScriptStore = create<ScriptState>((set, get) => ({
     const element = get().doc.elements.find((el) => el.id === id)
     if (!element) return null
 
+    // Empty lines: Tab cycles type; Enter does not invent a new blank row.
+    // (SmartType accept is handled in the editor before this runs.)
+    if (isBlankElement(element)) {
+      return id
+    }
+
     const formatted = formatElementText(element.type, element.text)
     if (formatted !== element.text) {
       get().updateElementText(id, formatted)
     }
 
-    // Don't leave an empty current line behind when moving on.
-    // insertAfter will prune blanks except the new element.
     return get().insertAfter(id, ENTER_NEXT_TYPE[element.type])
   },
 

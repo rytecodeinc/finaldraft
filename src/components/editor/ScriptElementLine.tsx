@@ -226,12 +226,12 @@ export function ScriptElementLine({
         return
       }
 
-      // Enter selects the highlighted/hovered SmartType option.
+      // Enter confirms the highlighted SmartType option whenever the menu is open.
+      // Do not require prior arrow navigation — the first option is the default choice.
       if (
         event.key === 'Enter' &&
         !event.shiftKey &&
         menuOpen &&
-        menuNavigated &&
         suggestions.length > 0
       ) {
         event.preventDefault()
@@ -262,6 +262,7 @@ export function ScriptElementLine({
         return
       }
 
+      // Enter without SmartType creates the next logical element (never cycles types).
       if (event.key === 'Enter' && !event.shiftKey) {
         event.preventDefault()
         setMenuOpen(false)
