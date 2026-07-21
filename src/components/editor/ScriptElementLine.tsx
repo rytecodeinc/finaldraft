@@ -46,6 +46,7 @@ export function ScriptElementLine({
   const deleteElement = useScriptStore((s) => s.deleteElement)
   const setElementType = useScriptStore((s) => s.setElementType)
   const clearFocusRequest = useScriptStore((s) => s.clearFocusRequest)
+  const rememberCaret = useScriptStore((s) => s.rememberCaret)
   const focusCaret = useScriptStore((s) =>
     s.focusRequestId === element.id ? s.focusCaret : null,
   )
@@ -82,12 +83,12 @@ export function ScriptElementLine({
     }
   }, [element.text, element.type, isSingleLine])
 
-  // Restore focus after Tab type-cycles / undo / redo.
+  // Restore focus after Tab type-cycles / undo / redo / page remounts.
   useLayoutEffect(() => {
     if (!shouldFocus) return
     const node = isSingleLine ? inputRef.current : textareaRef.current
     if (!node) return
-    node.focus()
+    node.focus({ preventScroll: true })
     const len = node.value.length
     const start = focusCaret ? Math.min(focusCaret.start, len) : len
     const end = focusCaret ? Math.min(focusCaret.end, len) : len
@@ -95,6 +96,15 @@ export function ScriptElementLine({
     cyclingTypeRef.current = false
     clearFocusRequest()
   }, [shouldFocus, clearFocusRequest, isSingleLine, element.type, focusCaret])
+
+  const syncCaret = useCallback(() => {
+    const node = isSingleLine ? inputRef.current : textareaRef.current
+    if (!node) return
+    rememberCaret(element.id, {
+      start: node.selectionStart ?? node.value.length,
+      end: node.selectionEnd ?? node.value.length,
+    })
+  }, [element.id, isSingleLine, rememberCaret])
 
   useEffect(() => {
     setActiveSuggestion(0)
@@ -314,7 +324,11 @@ export function ScriptElementLine({
         next = stripContd(next)
       }
       onChange(next)
+      // Caret updates after React applies the value; sync on next frame.
+      window.requestAnimationFrame(() => syncCaret())
     },
+    onSelect: () => syncCaret(),
+    onKeyUp: () => syncCaret(),
     onBlur,
     onKeyDown,
     placeholder: placeholderFor(element.type),

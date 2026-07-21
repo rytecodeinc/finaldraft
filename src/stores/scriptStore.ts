@@ -73,6 +73,7 @@ interface ScriptState {
   selectElement: (id: string | null) => void
   requestFocus: (id: string, caret?: CaretPosition | null) => void
   clearFocusRequest: () => void
+  rememberCaret: (id: string, caret: CaretPosition) => void
   updateElementText: (id: string, text: string) => void
   setElementType: (id: string, type: ElementType) => void
   cycleType: (id: string, direction?: 1 | -1) => void
@@ -286,12 +287,22 @@ export const useScriptStore = create<ScriptState>((set, get) => ({
     }
   },
 
-  selectElement: (id) => set({ selectedId: id }),
+  selectElement: (id) =>
+    set(
+      id == null
+        ? { selectedId: null, focusRequestId: null, focusCaret: null }
+        : { selectedId: id },
+    ),
 
   requestFocus: (id, caret = null) =>
     set({ selectedId: id, focusRequestId: id, focusCaret: caret }),
 
-  clearFocusRequest: () => set({ focusRequestId: null, focusCaret: null }),
+  clearFocusRequest: () => set({ focusRequestId: null }),
+
+  rememberCaret: (id, caret) => {
+    if (get().selectedId !== id) return
+    set({ focusCaret: caret })
+  },
 
   updateElementText: (id, text) => {
     pushHistory(get, set)

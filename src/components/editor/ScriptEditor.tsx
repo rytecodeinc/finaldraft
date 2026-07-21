@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import { ElementTypeQuickBar } from '@/components/editor/ElementTypeQuickBar'
 import { FindBar } from '@/components/editor/FindBar'
 import { SceneNavigator } from '@/components/editor/SceneNavigator'
@@ -18,6 +18,9 @@ export function ScriptEditor() {
   const activeCommentId = useScriptStore((s) => s.activeCommentId)
   const selectedId = useScriptStore((s) => s.selectedId)
   const focusRequestId = useScriptStore((s) => s.focusRequestId)
+  const focusCaret = useScriptStore((s) => s.focusCaret)
+  const selectElement = useScriptStore((s) => s.selectElement)
+  const requestFocus = useScriptStore((s) => s.requestFocus)
   const undo = useScriptStore((s) => s.undo)
   const redo = useScriptStore((s) => s.redo)
   const saveNow = useScriptStore((s) => s.saveNow)
@@ -28,6 +31,11 @@ export function ScriptEditor() {
   const findMatchIndex = useScriptStore((s) => s.findMatchIndex)
 
   const { pages, pageCount } = useScriptPagination(elements)
+  const pageSig = useMemo(
+    () => pages.map((page) => page.elements.map((el) => el.id).join(',')).join('|'),
+    [pages],
+  )
+  const prevPageSigRef = useRef(pageSig)
 
   const findMatches = useMemo(
     () => findInScript(elements, findQuery, findTypeFilter),
@@ -55,6 +63,21 @@ export function ScriptEditor() {
     // Body pages + title page
     setPageCount(pageCount + 1)
   }, [pageCount, setPageCount])
+
+  // When pagination remounts the active element onto another page, restore focus.
+  useLayoutEffect(() => {
+    const prev = prevPageSigRef.current
+    prevPageSigRef.current = pageSig
+    if (prev === pageSig || !selectedId) return
+
+    const active = document.activeElement
+    const stillFocused =
+      active instanceof HTMLElement &&
+      active.closest(`[data-element-id="${selectedId}"]`)
+    if (stillFocused) return
+
+    requestFocus(selectedId, focusCaret)
+  }, [pageSig, selectedId, requestFocus, focusCaret])
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -96,6 +119,20 @@ export function ScriptEditor() {
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [openFind, redo, saveNow, undo])
 
+  const clearSelectionIfBackground = (
+    event: { target: EventTarget | null },
+  ) => {
+    const target = event.target
+    if (!(target instanceof HTMLElement)) return
+    if (target.closest('[data-element-id]')) return
+    if (target.closest('.quick-actions')) return
+    if (target.closest('.script-comment-card')) return
+    if (target.closest('.script-comment-anchor')) return
+    if (target.closest('.find-bar')) return
+    if (target.closest('.title-page-field')) return
+    selectElement(null)
+  }
+
   if (!hydrated) {
     return (
       <div className="script-workspace">
@@ -109,7 +146,7 @@ export function ScriptEditor() {
       <SceneNavigator />
       <div className="script-canvas-shell">
         <FindBar />
-        <div className="script-canvas">
+        <div className="script-canvas" onMouseDown={clearSelectionIfBackground}>
           <div className="script-stage">
             <div className="script-stage-pages">
               <TitlePage />
@@ -127,6 +164,7 @@ export function ScriptEditor() {
                     key={`page-${page.pageNumber}`}
                     className="script-page script-page--live"
                     aria-label={`Page ${page.pageNumber}`}
+                    onMouseDown={clearSelectionIfBackground}
                   >
                     <div className="script-page-body">
                       {page.continuedCharacter && !showContinuedOnCharacter ? (
