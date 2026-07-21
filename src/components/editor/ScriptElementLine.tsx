@@ -55,7 +55,7 @@ export function ScriptElementLine({
 
   const [menuOpen, setMenuOpen] = useState(false)
   const [activeSuggestion, setActiveSuggestion] = useState(0)
-  const [menuNavigated, setMenuNavigated] = useState(false)
+  const [, setMenuNavigated] = useState(false)
   const suppressMenuRef = useRef(false)
   const armChainedMenuRef = useRef(false)
 
