@@ -1,14 +1,11 @@
+import { extractScenes } from '@/screenplay/elementRules'
 import { useScriptStore } from '@/stores/scriptStore'
 
 export function SceneNavigator() {
   const elements = useScriptStore((s) => s.doc.elements)
   const selectedId = useScriptStore((s) => s.selectedId)
   const requestFocus = useScriptStore((s) => s.requestFocus)
-  const getScenes = useScriptStore((s) => s.getScenes)
-  const scenes = getScenes()
-
-  // Recompute when elements change — getScenes reads latest store
-  void elements
+  const scenes = extractScenes(elements)
 
   const activeSceneId = (() => {
     if (!selectedId) return scenes[0]?.id ?? null

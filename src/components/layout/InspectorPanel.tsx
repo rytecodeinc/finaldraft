@@ -2,14 +2,13 @@ import { X } from 'lucide-react'
 import { IconButton } from '@/components/ui/IconButton'
 import { PanelHeader } from '@/components/ui/PanelHeader'
 import { Resizer } from '@/components/ui/Resizer'
-import { ELEMENT_TYPES } from '@/screenplay/types'
-import { ELEMENT_LABELS } from '@/screenplay/types'
-import { useLayoutStore } from '@/stores/layoutStore'
 import {
-  getSelectedElement,
-  getSelectedScene,
-  useScriptStore,
-} from '@/stores/scriptStore'
+  estimatePageCount,
+  findSceneForElement,
+} from '@/screenplay/elementRules'
+import { ELEMENT_LABELS, ELEMENT_TYPES } from '@/screenplay/types'
+import { useLayoutStore } from '@/stores/layoutStore'
+import { useScriptStore } from '@/stores/scriptStore'
 
 export function InspectorPanel() {
   const inspectorOpen = useLayoutStore((s) => s.inspectorOpen)
@@ -17,16 +16,16 @@ export function InspectorPanel() {
   const setInspectorOpen = useLayoutStore((s) => s.setInspectorOpen)
   const setInspectorWidth = useLayoutStore((s) => s.setInspectorWidth)
 
-  const selected = useScriptStore(getSelectedElement)
-  const scene = useScriptStore(getSelectedScene)
-  const pageEstimate = useScriptStore((s) => s.getPageEstimate())
-  const setElementType = useScriptStore((s) => s.setElementType)
   const elements = useScriptStore((s) => s.doc.elements)
   const selectedId = useScriptStore((s) => s.selectedId)
+  const setElementType = useScriptStore((s) => s.setElementType)
 
-  // Keep inspector reactive to text edits
-  void elements
-  void selectedId
+  const selected =
+    selectedId == null
+      ? null
+      : (elements.find((el) => el.id === selectedId) ?? null)
+  const scene = findSceneForElement(elements, selectedId)
+  const pageEstimate = estimatePageCount(elements)
 
   if (!inspectorOpen) return null
 
@@ -122,7 +121,9 @@ export function InspectorPanel() {
           )}
         </section>
 
-        {selected?.type === 'character' || selected?.type === 'dialogue' || selected?.type === 'parenthetical' ? (
+        {selected?.type === 'character' ||
+        selected?.type === 'dialogue' ||
+        selected?.type === 'parenthetical' ? (
           <section className="inspector-section">
             <h3>Dialogue Context</h3>
             <div className="inspector-row">

@@ -1,12 +1,13 @@
 import { useLocation, useNavigate } from 'react-router-dom'
 import { getNavItemByPath } from '@/navigation/navItems'
+import {
+  estimatePageCount,
+  extractScenes,
+  findSceneForElement,
+} from '@/screenplay/elementRules'
 import { ELEMENT_LABELS } from '@/screenplay/types'
 import { useLayoutStore } from '@/stores/layoutStore'
-import {
-  getSelectedElement,
-  getSelectedScene,
-  useScriptStore,
-} from '@/stores/scriptStore'
+import { useScriptStore } from '@/stores/scriptStore'
 import { useThemeStore } from '@/stores/themeStore'
 
 export function StatusBar() {
@@ -17,17 +18,20 @@ export function StatusBar() {
   const sidebarOpen = useLayoutStore((s) => s.sidebarOpen)
   const inspectorOpen = useLayoutStore((s) => s.inspectorOpen)
 
-  const selected = useScriptStore(getSelectedElement)
-  const scene = useScriptStore(getSelectedScene)
+  const elements = useScriptStore((s) => s.doc.elements)
+  const selectedId = useScriptStore((s) => s.selectedId)
   const saveStatus = useScriptStore((s) => s.saveStatus)
   const dirty = useScriptStore((s) => s.dirty)
-  const elements = useScriptStore((s) => s.doc.elements)
   const title = useScriptStore((s) => s.doc.title)
   const onScript = location.pathname.startsWith('/script')
 
-  const pageEstimate = useScriptStore((s) => s.getPageEstimate())
-  const sceneCount = useScriptStore((s) => s.getScenes().length)
-  void elements
+  const selected =
+    selectedId == null
+      ? null
+      : (elements.find((el) => el.id === selectedId) ?? null)
+  const scene = findSceneForElement(elements, selectedId)
+  const pageEstimate = estimatePageCount(elements)
+  const sceneCount = extractScenes(elements).length
 
   return (
     <footer className="statusbar" role="contentinfo">
