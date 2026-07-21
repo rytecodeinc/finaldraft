@@ -202,9 +202,6 @@ export function ScriptElementLine({
         const action = resolveTabAction({
           elementType: element.type,
           text: element.text,
-          suggestions,
-          activeSuggestionIndex: activeSuggestion,
-          menuOpen,
           shiftKey: event.shiftKey,
           elements,
         })
@@ -213,13 +210,10 @@ export function ScriptElementLine({
           applyTabText(action.text)
           return
         }
-        if (action.kind === 'accept') {
-          applySuggestion(action.suggestion)
-          return
-        }
         if (action.kind === 'cycle') {
           cyclingTypeRef.current = true
           setMenuOpen(false)
+          setMenuNavigated(false)
           cycleType(element.id, action.direction)
           return
         }

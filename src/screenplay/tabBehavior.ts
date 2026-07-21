@@ -1,36 +1,23 @@
 import { TIME_OF_DAY_OPTIONS } from './elementRules'
-import type { SmartTypeSuggestion } from './smartType'
 import { collectTimesOfDay } from './smartType'
 import type { ElementType, ScreenplayElement } from './types'
 
 export type TabAction =
   | { kind: 'text'; text: string }
-  | { kind: 'accept'; suggestion: SmartTypeSuggestion }
   | { kind: 'cycle'; direction: 1 | -1 }
   | { kind: 'none' }
 
 /**
- * Context-aware Tab for screenplay elements.
- * Prefers SmartType acceptance and scene-heading field navigation over type cycling.
+ * Tab cycles element types. SmartType options are confirmed with Enter, not Tab.
+ * Scene headings still get field-advance (INT → location → time) before cycling.
  */
 export function resolveTabAction(options: {
   elementType: ElementType
   text: string
-  suggestions: SmartTypeSuggestion[]
-  activeSuggestionIndex: number
-  menuOpen: boolean
   shiftKey: boolean
   elements: ScreenplayElement[]
 }): TabAction {
-  const {
-    elementType,
-    text,
-    suggestions,
-    activeSuggestionIndex,
-    menuOpen,
-    shiftKey,
-    elements,
-  } = options
+  const { elementType, text, shiftKey, elements } = options
 
   if (shiftKey) {
     return { kind: 'cycle', direction: -1 }
@@ -44,33 +31,7 @@ export function resolveTabAction(options: {
     }
   }
 
-  // Accept SmartType when the menu is open and there's a useful match
-  if (menuOpen && suggestions.length > 0) {
-    const active = suggestions[activeSuggestionIndex] ?? suggestions[0]!
-    const prefixHit = pickPrefixSuggestion(text, suggestions)
-    if (prefixHit) return { kind: 'accept', suggestion: prefixHit }
-    if (elementType !== 'sceneHeading' || text.trim().length > 0) {
-      return { kind: 'accept', suggestion: active }
-    }
-  }
-
-  if (elementType === 'character' || elementType === 'transition') {
-    const best = pickPrefixSuggestion(text, suggestions)
-    if (best) return { kind: 'accept', suggestion: best }
-  }
-
   return { kind: 'cycle', direction: 1 }
-}
-
-function pickPrefixSuggestion(
-  text: string,
-  suggestions: SmartTypeSuggestion[],
-): SmartTypeSuggestion | null {
-  const q = text.trim().toUpperCase()
-  if (!q) return null
-  const exact = suggestions.find((s) => s.label.toUpperCase() === q)
-  if (exact) return exact
-  return suggestions.find((s) => s.label.toUpperCase().startsWith(q)) ?? null
 }
 
 /**
@@ -117,7 +78,6 @@ export function advanceSceneHeadingField(
     const times = collectTimesOfDay(elements)
 
     if (!timeQuery) {
-      // Already in time field with empty value — keep caret there (no type cycle)
       return `${intExt} ${location} - `
     }
 
@@ -130,7 +90,6 @@ export function advanceSceneHeadingField(
       return `${intExt} ${location} - ${hit}`
     }
 
-    // Heading looks complete — allow Tab to cycle element type
     return null
   }
 
@@ -155,7 +114,6 @@ export function advanceSceneHeadingField(
 }
 
 function completeIntExtAbbreviation(upper: string): string | null {
-  // Only when the whole field is the abbreviation (no location yet)
   if (/[\s\-–—]/.test(upper)) return null
 
   const table: Record<string, string> = {
@@ -177,8 +135,5 @@ function completeIntExtAbbreviation(upper: string): string | null {
 
   const hit = table[upper]
   if (!hit) return null
-
-  // If already the canonical dotted token, still advance to location field via caller
-  if (upper === hit) return hit
   return hit
 }
