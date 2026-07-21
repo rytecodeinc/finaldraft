@@ -1,11 +1,21 @@
 import type { LucideIcon } from 'lucide-react'
 import type { ReactNode } from 'react'
+import { Link } from 'react-router-dom'
+
+export interface PlaceholderCard {
+  title: string
+  description: string
+  icon: LucideIcon
+  /** When set, the card navigates to this path on click. */
+  to?: string
+  onClick?: () => void
+}
 
 interface PlaceholderScreenProps {
   kicker: string
   title: string
   description: string
-  cards?: { title: string; description: string; icon: LucideIcon }[]
+  cards?: PlaceholderCard[]
   children?: ReactNode
 }
 
@@ -31,13 +41,44 @@ export function PlaceholderScreen({
           <div className="placeholder-grid">
             {cards.map((card) => {
               const Icon = card.icon
-              return (
-                <article key={card.title} className="placeholder-block">
+              const body = (
+                <>
                   <div className="placeholder-icon">
                     <Icon size={18} strokeWidth={1.75} />
                   </div>
                   <h3>{card.title}</h3>
                   <p>{card.description}</p>
+                </>
+              )
+
+              if (card.to) {
+                return (
+                  <Link
+                    key={card.title}
+                    to={card.to}
+                    className="placeholder-block placeholder-block--action"
+                  >
+                    {body}
+                  </Link>
+                )
+              }
+
+              if (card.onClick) {
+                return (
+                  <button
+                    key={card.title}
+                    type="button"
+                    className="placeholder-block placeholder-block--action"
+                    onClick={card.onClick}
+                  >
+                    {body}
+                  </button>
+                )
+              }
+
+              return (
+                <article key={card.title} className="placeholder-block">
+                  {body}
                 </article>
               )
             })}

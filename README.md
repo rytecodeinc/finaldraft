@@ -25,5 +25,12 @@ Typed elements, Enter/Tab flow, IndexedDB, scene navigator, US Letter pagination
 - **Find in script** (`⌘/Ctrl+F`) with element-type filter
 - **(MORE)** / **(CONT'D)** chrome across dialogue page breaks
 
+### 4 — Workspace & story surfaces
+- **Dashboard** quick actions (continue writing, new project entry)
+- **Projects** model (create / open / rename; replace single active script)
+- **Outline** scene cards synced from script headings
+- **Characters & Locations** directories derived from the screenplay
+- **Notes** attached to scenes / elements
+
 ## Out of scope (later)
-Colored revisions, locked pages, reports, Fountain, outline/beat board sync, collaboration, TV acts, backend.
+Colored revisions, locked pages, reports, Fountain, beat-board sync, collaboration, TV acts, backend.
