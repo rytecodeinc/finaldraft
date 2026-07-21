@@ -1,5 +1,5 @@
 import { useLocation, useNavigate } from 'react-router-dom'
-import { getNavItemByPath } from '@/navigation/navItems'
+import { getNavItemByPath, isScriptPath, projectPath } from '@/navigation/navItems'
 import {
   extractScenes,
   findSceneForElement,
@@ -22,8 +22,10 @@ export function StatusBar() {
   const saveStatus = useScriptStore((s) => s.saveStatus)
   const dirty = useScriptStore((s) => s.dirty)
   const title = useScriptStore((s) => s.doc.title)
+  const projectId = useScriptStore((s) => s.project.id)
+  const projectName = useScriptStore((s) => s.project.name)
   const pageCount = useScriptStore((s) => s.pageCount)
-  const onScript = location.pathname.startsWith('/script')
+  const onScript = isScriptPath(location.pathname)
 
   const selected =
     selectedId == null
@@ -54,12 +56,12 @@ export function StatusBar() {
           <button
             type="button"
             className="statusbar-item statusbar-link"
-            onClick={() => navigate('/script')}
+            onClick={() => navigate(projectPath(projectId, 'script'))}
           >
-            {title}
+            {projectName} · {title}
           </button>
         ) : (
-          <span className="statusbar-item">Milestone 3 · Intelligence</span>
+          <span className="statusbar-item">{projectName}</span>
         )}
       </div>
       <div className="statusbar-group">

@@ -50,6 +50,8 @@ export interface TitlePageInfo {
 
 export interface ScriptDocument {
   id: string
+  /** Owning project — script is the source of truth for story data. */
+  projectId: string
   title: string
   format: 'feature'
   titlePage: TitlePageInfo
@@ -57,6 +59,22 @@ export interface ScriptDocument {
   comments: ElementComment[]
   createdAt: number
   updatedAt: number
+}
+
+/** A project owns exactly one script (for now). */
+export interface Project {
+  id: string
+  name: string
+  format: 'feature'
+  scriptId: string
+  createdAt: number
+  updatedAt: number
+}
+
+/** Workspace pointer — which project is open. */
+export interface WorkspaceMeta {
+  id: 'workspace'
+  activeProjectId: string | null
 }
 
 export interface SceneInfo {

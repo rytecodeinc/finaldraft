@@ -1,13 +1,20 @@
 import { createElement } from './elementRules'
-import { createDefaultTitlePage, type ScriptDocument } from './types'
+import { createId } from './ids'
+import {
+  createDefaultTitlePage,
+  type Project,
+  type ScriptDocument,
+} from './types'
 
-export const ACTIVE_SCRIPT_KEY = 'active'
+/** Legacy IndexedDB key from single-script era (migrated on load). */
+export const LEGACY_ACTIVE_SCRIPT_KEY = 'active'
 
-export function createSampleScript(): ScriptDocument {
+export function createSampleScript(projectId: string, scriptId?: string): ScriptDocument {
   const now = Date.now()
   const title = 'Untitled Screenplay'
   return {
-    id: 'script_active',
+    id: scriptId ?? createId('script'),
+    projectId,
     title,
     format: 'feature',
     titlePage: {
@@ -49,4 +56,23 @@ export function createSampleScript(): ScriptDocument {
       createElement('dialogue', 'Okay. That one stays.'),
     ],
   }
+}
+
+export function createUntitledProject(): {
+  project: Project
+  script: ScriptDocument
+} {
+  const now = Date.now()
+  const projectId = createId('proj')
+  const scriptId = createId('script')
+  const script = createSampleScript(projectId, scriptId)
+  const project: Project = {
+    id: projectId,
+    name: 'Untitled',
+    format: 'feature',
+    scriptId,
+    createdAt: now,
+    updatedAt: now,
+  }
+  return { project, script }
 }

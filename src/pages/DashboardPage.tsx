@@ -6,12 +6,15 @@ import {
   TrendingUp,
 } from 'lucide-react'
 import { PlaceholderScreen } from '@/components/ui/PlaceholderScreen'
+import { projectPath } from '@/navigation/navItems'
 import { useScriptStore } from '@/stores/scriptStore'
 
 export function DashboardPage() {
   const hydrated = useScriptStore((s) => s.hydrated)
   const hydrate = useScriptStore((s) => s.hydrate)
   const title = useScriptStore((s) => s.doc.title)
+  const projectId = useScriptStore((s) => s.project.id)
+  const projectName = useScriptStore((s) => s.project.name)
   const updatedAt = useScriptStore((s) => s.doc.updatedAt)
   const getPageEstimate = useScriptStore((s) => s.getPageEstimate)
 
@@ -21,7 +24,7 @@ export function DashboardPage() {
 
   const pageEstimate = hydrated ? Math.max(1, getPageEstimate()) : 1
   const continueDescription = hydrated
-    ? `Resume “${title.trim() || 'Untitled Screenplay'}” · ${pageEstimate} page${pageEstimate === 1 ? '' : 's'} · ${formatRelativeTime(updatedAt)}`
+    ? `Resume “${projectName}” · ${title.trim() || 'Untitled Screenplay'} · ${pageEstimate} page${pageEstimate === 1 ? '' : 's'} · ${formatRelativeTime(updatedAt)}`
     : 'Jump back into your most recent screenplay session.'
 
   return (
@@ -34,12 +37,13 @@ export function DashboardPage() {
           title: 'Continue writing',
           description: continueDescription,
           icon: Clock3,
-          to: '/script',
+          to: hydrated ? projectPath(projectId, 'script') : '/script',
         },
         {
           title: 'New project',
           description: 'Start a feature, short, TV episode, or stage play.',
           icon: FilePlus2,
+          to: '/projects',
         },
         {
           title: 'Writing streak',

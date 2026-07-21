@@ -2,17 +2,20 @@ import { PanelLeftClose, PanelLeftOpen } from 'lucide-react'
 import { NavLink } from 'react-router-dom'
 import { IconButton } from '@/components/ui/IconButton'
 import { Resizer } from '@/components/ui/Resizer'
-import { NAV_ITEMS, NAV_SECTIONS } from '@/navigation/navItems'
+import { NAV_ITEMS, NAV_SECTIONS, projectPath } from '@/navigation/navItems'
 import {
   SIDEBAR_DEFAULT,
   useLayoutStore,
 } from '@/stores/layoutStore'
+import { useScriptStore } from '@/stores/scriptStore'
 
 export function Sidebar() {
   const sidebarOpen = useLayoutStore((s) => s.sidebarOpen)
   const sidebarWidth = useLayoutStore((s) => s.sidebarWidth)
   const setSidebarWidth = useLayoutStore((s) => s.setSidebarWidth)
   const toggleSidebar = useLayoutStore((s) => s.toggleSidebar)
+  const projectId = useScriptStore((s) => s.project.id)
+  const projectName = useScriptStore((s) => s.project.name)
 
   const width = sidebarOpen ? sidebarWidth : 52
 
@@ -23,7 +26,11 @@ export function Sidebar() {
       aria-label="Primary navigation"
     >
       <div className="sidebar-header">
-        {sidebarOpen ? <div className="sidebar-title">Navigator</div> : null}
+        {sidebarOpen ? (
+          <div className="sidebar-title" title={projectName}>
+            {projectName}
+          </div>
+        ) : null}
         <IconButton
           label={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
           size="sm"
@@ -48,10 +55,14 @@ export function Sidebar() {
               ) : null}
               {items.map((item) => {
                 const Icon = item.icon
+                const to =
+                  item.storyView && projectId
+                    ? projectPath(projectId, item.storyView)
+                    : item.path
                 return (
                   <NavLink
                     key={item.id}
-                    to={item.path}
+                    to={to}
                     end={item.path === '/'}
                     className={({ isActive }) =>
                       `nav-item ${isActive ? 'nav-item--active' : ''}`.trim()

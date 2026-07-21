@@ -11,7 +11,12 @@ import {
 import { useLocation, useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/Button'
 import { IconButton } from '@/components/ui/IconButton'
-import { getNavItemByPath } from '@/navigation/navItems'
+import {
+  getNavItemByPath,
+  isScriptPath,
+  parseProjectPath,
+  projectPath,
+} from '@/navigation/navItems'
 import { useLayoutStore } from '@/stores/layoutStore'
 import { useScriptStore } from '@/stores/scriptStore'
 
@@ -19,7 +24,11 @@ export function Toolbar() {
   const location = useLocation()
   const navigate = useNavigate()
   const current = getNavItemByPath(location.pathname)
-  const onScript = location.pathname.startsWith('/script')
+  const projectRoute = parseProjectPath(location.pathname)
+  const onScript = isScriptPath(location.pathname)
+  const projectName = useScriptStore((s) => s.project.name)
+  const projectId = useScriptStore((s) => s.project.id)
+
   const sidebarOpen = useLayoutStore((s) => s.sidebarOpen)
   const inspectorOpen = useLayoutStore((s) => s.inspectorOpen)
   const bottomPanelOpen = useLayoutStore((s) => s.bottomPanelOpen)
@@ -47,6 +56,10 @@ export function Toolbar() {
         ? 'Saved'
         : 'Save script'
 
+  const toolbarLabel = projectRoute
+    ? `${projectName} > ${current?.label ?? 'Story'}`
+    : (current?.label ?? 'SceneDesk')
+
   return (
     <div className="toolbar" role="toolbar" aria-label="Editor toolbar">
       <div className="toolbar-group">
@@ -71,7 +84,7 @@ export function Toolbar() {
       <div className="toolbar-divider" />
 
       <div className="toolbar-group">
-        <span className="toolbar-label">{current?.label ?? 'SceneDesk'}</span>
+        <span className="toolbar-label">{toolbarLabel}</span>
         {onScript ? (
           <span className="toolbar-save-status" data-status={saveStatus}>
             {saveStatus === 'saving'
@@ -121,8 +134,9 @@ export function Toolbar() {
         <Button
           variant="primary"
           onClick={() => {
+            const scriptTo = projectPath(projectId, 'script')
             if (!onScript) {
-              navigate('/script')
+              navigate(scriptTo)
               window.setTimeout(() => addScene(), 0)
               return
             }

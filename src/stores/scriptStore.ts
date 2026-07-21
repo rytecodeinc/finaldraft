@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import {
   collectCharacterNames,
+  collectLocationNames,
   composeSceneHeading,
   createElement,
   cycleTabElementType,
@@ -12,13 +13,20 @@ import {
   isBlankElement,
   parseSceneHeading,
   pruneBlankElements,
+  reorderSceneElements,
 } from '@/screenplay/elementRules'
 import { findInScript, type FindMatch, type FindTypeFilter } from '@/screenplay/findScript'
-import { loadActiveScript, saveActiveScript } from '@/screenplay/idb'
-import { createSampleScript } from '@/screenplay/sampleScript'
+import {
+  loadWorkspace,
+  saveProject,
+  saveScriptDocument,
+  setActiveProjectId,
+} from '@/screenplay/idb'
+import { createUntitledProject } from '@/screenplay/sampleScript'
 import type {
   ElementComment,
   ElementType,
+  Project,
   SaveStatus,
   SceneInfo,
   ScreenplayElement,
@@ -60,6 +68,8 @@ export interface CommentDraft {
 
 interface ScriptState {
   doc: ScriptDocument
+  project: Project
+  projects: Project[]
   selectedId: string | null
   focusRequestId: string | null
   focusCaret: CaretPosition | null
@@ -78,6 +88,10 @@ interface ScriptState {
   commentDraft: CommentDraft | null
   activeCommentId: string | null
   hydrate: () => Promise<void>
+  openProject: (projectId: string) => Promise<void>
+  renameProject: (name: string) => void
+  reorderScene: (sceneId: string, beforeSceneId: string | null) => void
+  renameScene: (sceneId: string, heading: string) => void
   selectElement: (id: string | null) => void
   requestFocus: (id: string, caret?: CaretPosition | null) => void
   clearFocusRequest: () => void
@@ -107,6 +121,7 @@ interface ScriptState {
   getFindMatches: () => FindMatch[]
   getScenes: () => SceneInfo[]
   getCharacters: () => string[]
+  getLocations: () => string[]
   getPageEstimate: () => number
   startCommentDraft: (
     elementId: string,
@@ -251,8 +266,13 @@ function scrollElementIntoView(elementId: string | null) {
   })
 }
 
-export const useScriptStore = create<ScriptState>((set, get) => ({
-  doc: createSampleScript(),
+export const useScriptStore = create<ScriptState>((set, get) => {
+  const bootstrap = createUntitledProject()
+
+  return {
+  doc: bootstrap.script,
+  project: bootstrap.project,
+  projects: [bootstrap.project],
   selectedId: null,
   focusRequestId: null,
   focusCaret: null,
@@ -274,10 +294,11 @@ export const useScriptStore = create<ScriptState>((set, get) => ({
     if (get().hydrated) return
     set({ saveStatus: 'loading' })
     try {
-      const doc = await loadActiveScript()
+      const { project, script, projects } = await loadWorkspace()
       set({
-        doc,
-        // Do not auto-select/focus the first scene heading on load.
+        doc: script,
+        project,
+        projects,
         selectedId: null,
         focusRequestId: null,
         focusCaret: null,
@@ -288,9 +309,11 @@ export const useScriptStore = create<ScriptState>((set, get) => ({
         redoStack: [],
       })
     } catch {
-      const doc = createSampleScript()
+      const fallback = createUntitledProject()
       set({
-        doc,
+        doc: fallback.script,
+        project: fallback.project,
+        projects: [fallback.project],
         selectedId: null,
         focusRequestId: null,
         focusCaret: null,
@@ -299,6 +322,55 @@ export const useScriptStore = create<ScriptState>((set, get) => ({
         saveStatus: 'error',
       })
     }
+  },
+
+  openProject: async (projectId) => {
+    await setActiveProjectId(projectId)
+    const { project, script, projects } = await loadWorkspace()
+    if (project.id !== projectId) return
+    set({
+      project,
+      projects,
+      doc: script,
+      selectedId: null,
+      focusRequestId: null,
+      focusCaret: null,
+      dirty: false,
+      saveStatus: 'saved',
+      undoStack: [],
+      redoStack: [],
+      commentDraft: null,
+      activeCommentId: null,
+      viewPage: 'title',
+    })
+  },
+
+  renameProject: (name) => {
+    const trimmed = name.trim() || 'Untitled'
+    const project = { ...get().project, name: trimmed, updatedAt: Date.now() }
+    set((state) => ({
+      project,
+      projects: state.projects.map((p) => (p.id === project.id ? project : p)),
+    }))
+    void saveProject(project)
+  },
+
+  reorderScene: (sceneId, beforeSceneId) => {
+    const next = reorderSceneElements(get().doc.elements, sceneId, beforeSceneId)
+    if (next === get().doc.elements) return
+    pushHistory(get, set)
+    set((state) => ({
+      doc: {
+        ...state.doc,
+        elements: next,
+        updatedAt: Date.now(),
+      },
+    }))
+    scheduleAutosave(get, set)
+  },
+
+  renameScene: (sceneId, heading) => {
+    get().updateElementText(sceneId, heading.toUpperCase())
   },
 
   selectElement: (id) =>
@@ -572,12 +644,18 @@ export const useScriptStore = create<ScriptState>((set, get) => ({
   saveNow: async () => {
     // Drop blank placeholders between content; keep the active writing line in-memory.
     get().pruneBlankElements(get().selectedId)
-    const { doc } = get()
     set({ saveStatus: 'saving' })
     try {
-      // normalizeScriptDocument strips all blanks from what is persisted.
-      await saveActiveScript(doc)
-      set({ saveStatus: 'saved', dirty: false })
+      const saved = await saveScriptDocument(get().doc)
+      const project = { ...get().project, updatedAt: saved.updatedAt }
+      set((state) => ({
+        doc: saved,
+        project,
+        projects: state.projects.map((p) => (p.id === project.id ? project : p)),
+        saveStatus: 'saved',
+        dirty: false,
+      }))
+      void saveProject(project)
     } catch {
       set({ saveStatus: 'error' })
     }
@@ -636,6 +714,7 @@ export const useScriptStore = create<ScriptState>((set, get) => ({
 
   getScenes: () => extractScenes(get().doc.elements),
   getCharacters: () => collectCharacterNames(get().doc.elements),
+  getLocations: () => collectLocationNames(get().doc.elements),
   getPageEstimate: () => estimatePageCount(get().doc.elements),
 
   startCommentDraft: (elementId, range = null) => {
@@ -743,7 +822,8 @@ export const useScriptStore = create<ScriptState>((set, get) => ({
     }))
     scheduleAutosave(get, set)
   },
-}))
+  }
+})
 
 export function getSelectedElement(state: ScriptState): ScreenplayElement | null {
   if (!state.selectedId) return null

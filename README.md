@@ -26,11 +26,10 @@ Typed elements, Enter/Tab flow, IndexedDB, scene navigator, US Letter pagination
 - **(MORE)** / **(CONT'D)** chrome across dialogue page breaks
 
 ### 4 — Workspace & story surfaces
-- **Dashboard** quick actions (continue writing, new project entry)
-- **Projects** model (create / open / rename; replace single active script)
-- **Outline** scene cards synced from script headings
-- **Characters & Locations** directories derived from the screenplay
-- **Notes** attached to scenes / elements
+- **Projects** — one script per project; migrate legacy single script → “Untitled”
+- **Project-scoped routes** — `/p/:id/script|outline|characters|locations`
+- **Derived views** — outline (reorder/rename), characters & locations (list-only) from screenplay
+- **Dashboard** — Continue writing → `/p/:id/script`; toolbar `Project > Script`
 
 ## Out of scope (later)
-Colored revisions, locked pages, reports, Fountain, beat-board sync, collaboration, TV acts, backend.
+Colored revisions, locked pages, reports, Fountain, beat-board sync, collaboration, TV acts, backend, multiple scripts per project, character/location enrichment fields.

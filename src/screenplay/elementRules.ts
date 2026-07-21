@@ -217,6 +217,54 @@ export function collectCharacterNames(elements: ScreenplayElement[]): string[] {
   return [...names].sort()
 }
 
+export function collectLocationNames(elements: ScreenplayElement[]): string[] {
+  const names = new Set<string>()
+  for (const element of elements) {
+    if (element.type !== 'sceneHeading') continue
+    const location = parseSceneHeading(element.text).location
+    if (location) names.add(location.toUpperCase())
+  }
+  return [...names].sort()
+}
+
+/**
+ * Move a scene block (heading + following elements until next heading)
+ * so it appears before `beforeSceneId`, or at end when beforeSceneId is null.
+ */
+export function reorderSceneElements(
+  elements: ScreenplayElement[],
+  sceneId: string,
+  beforeSceneId: string | null,
+): ScreenplayElement[] {
+  if (sceneId === beforeSceneId) return elements
+
+  const scenes = extractScenes(elements)
+  const from = scenes.find((s) => s.id === sceneId)
+  if (!from) return elements
+
+  const fromIndex = scenes.findIndex((s) => s.id === sceneId)
+  const nextScene = scenes[fromIndex + 1]
+  const blockStart = from.elementIndex
+  const blockEnd = nextScene ? nextScene.elementIndex : elements.length
+  const block = elements.slice(blockStart, blockEnd)
+  const without = [
+    ...elements.slice(0, blockStart),
+    ...elements.slice(blockEnd),
+  ]
+
+  if (beforeSceneId == null) {
+    return [...without, ...block]
+  }
+
+  const targetIndex = without.findIndex((el) => el.id === beforeSceneId)
+  if (targetIndex < 0) return elements
+  return [
+    ...without.slice(0, targetIndex),
+    ...block,
+    ...without.slice(targetIndex),
+  ]
+}
+
 export function estimatePageCount(elements: ScreenplayElement[]): number {
   // Rough feature-film estimate: ~55 lines per page
   const lines = elements.reduce((sum, el) => {

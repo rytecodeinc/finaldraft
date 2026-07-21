@@ -15,13 +15,18 @@ import {
 
 export type NavSection = 'workspace' | 'story' | 'production' | 'system'
 
+export type StoryView = 'script' | 'outline' | 'characters' | 'locations' | 'notes'
+
 export interface NavItem {
   id: string
   label: string
+  /** Path template; use projectPath() for project-scoped story items. */
   path: string
   icon: LucideIcon
   section: NavSection
   description: string
+  /** When set, path is under /p/:projectId/... */
+  storyView?: StoryView
 }
 
 export const NAV_SECTIONS: { id: NavSection; label: string }[] = [
@@ -54,7 +59,8 @@ export const NAV_ITEMS: NavItem[] = [
     path: '/script',
     icon: FileText,
     section: 'story',
-    description: 'Structured screenplay editor — coming in a later milestone.',
+    storyView: 'script',
+    description: 'Structured screenplay editor.',
   },
   {
     id: 'outline',
@@ -62,7 +68,8 @@ export const NAV_ITEMS: NavItem[] = [
     path: '/outline',
     icon: ListTree,
     section: 'story',
-    description: 'Hierarchical scene and sequence outline.',
+    storyView: 'outline',
+    description: 'Scene list derived from the screenplay.',
   },
   {
     id: 'beat-board',
@@ -78,7 +85,8 @@ export const NAV_ITEMS: NavItem[] = [
     path: '/characters',
     icon: Users,
     section: 'story',
-    description: 'Character bible and relationships.',
+    storyView: 'characters',
+    description: 'Characters derived from dialogue cues.',
   },
   {
     id: 'locations',
@@ -86,7 +94,8 @@ export const NAV_ITEMS: NavItem[] = [
     path: '/locations',
     icon: MapPin,
     section: 'story',
-    description: 'Sets, places, and location notes.',
+    storyView: 'locations',
+    description: 'Locations derived from scene headings.',
   },
   {
     id: 'notes',
@@ -94,6 +103,7 @@ export const NAV_ITEMS: NavItem[] = [
     path: '/notes',
     icon: StickyNote,
     section: 'story',
+    storyView: 'notes',
     description: 'Research, ideas, and freeform notes.',
   },
   {
@@ -122,7 +132,38 @@ export const NAV_ITEMS: NavItem[] = [
   },
 ]
 
+export function projectPath(projectId: string, view: StoryView): string {
+  return `/p/${projectId}/${view}`
+}
+
+export function parseProjectPath(
+  pathname: string,
+): { projectId: string; view: StoryView } | null {
+  const match = pathname.match(
+    /^\/p\/([^/]+)\/(script|outline|characters|locations|notes)\/?$/,
+  )
+  if (!match) return null
+  return {
+    projectId: match[1]!,
+    view: match[2] as StoryView,
+  }
+}
+
 export function getNavItemByPath(pathname: string): NavItem | undefined {
+  const project = parseProjectPath(pathname)
+  if (project) {
+    return NAV_ITEMS.find((item) => item.storyView === project.view)
+  }
   if (pathname === '/') return NAV_ITEMS.find((item) => item.path === '/')
-  return NAV_ITEMS.find((item) => item.path !== '/' && pathname.startsWith(item.path))
+  // Legacy story routes still resolve to labels.
+  return NAV_ITEMS.find(
+    (item) => item.path !== '/' && pathname.startsWith(item.path),
+  )
+}
+
+export function isScriptPath(pathname: string): boolean {
+  return (
+    parseProjectPath(pathname)?.view === 'script' ||
+    pathname.startsWith('/script')
+  )
 }

@@ -1,10 +1,22 @@
-import { createDefaultTitlePage, type ScriptDocument, type TitlePageInfo } from './types'
+import { createId } from './ids'
 import { pruneBlankElements } from './elementRules'
-import { ACTIVE_SCRIPT_KEY, createSampleScript } from './sampleScript'
+import {
+  createUntitledProject,
+  LEGACY_ACTIVE_SCRIPT_KEY,
+} from './sampleScript'
+import {
+  createDefaultTitlePage,
+  type Project,
+  type ScriptDocument,
+  type TitlePageInfo,
+  type WorkspaceMeta,
+} from './types'
 
 const DB_NAME = 'scenedesk'
-const DB_VERSION = 1
-const STORE_NAME = 'scripts'
+const DB_VERSION = 2
+const SCRIPTS_STORE = 'scripts'
+const PROJECTS_STORE = 'projects'
+const WORKSPACE_STORE = 'workspace'
 
 function openDb(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -12,44 +24,82 @@ function openDb(): Promise<IDBDatabase> {
 
     request.onupgradeneeded = () => {
       const db = request.result
-      if (!db.objectStoreNames.contains(STORE_NAME)) {
-        db.createObjectStore(STORE_NAME, { keyPath: 'id' })
+      if (!db.objectStoreNames.contains(SCRIPTS_STORE)) {
+        db.createObjectStore(SCRIPTS_STORE, { keyPath: 'id' })
+      }
+      if (!db.objectStoreNames.contains(PROJECTS_STORE)) {
+        db.createObjectStore(PROJECTS_STORE, { keyPath: 'id' })
+      }
+      if (!db.objectStoreNames.contains(WORKSPACE_STORE)) {
+        db.createObjectStore(WORKSPACE_STORE, { keyPath: 'id' })
       }
     }
 
     request.onsuccess = () => resolve(request.result)
-    request.onerror = () => reject(request.error ?? new Error('Failed to open IndexedDB'))
+    request.onerror = () =>
+      reject(request.error ?? new Error('Failed to open IndexedDB'))
   })
 }
 
 function withStore<T>(
+  storeName: string,
   mode: IDBTransactionMode,
   fn: (store: IDBObjectStore) => IDBRequest<T>,
 ): Promise<T> {
   return openDb().then(
     (db) =>
       new Promise<T>((resolve, reject) => {
-        const tx = db.transaction(STORE_NAME, mode)
-        const store = tx.objectStore(STORE_NAME)
+        const tx = db.transaction(storeName, mode)
+        const store = tx.objectStore(storeName)
         const request = fn(store)
         request.onsuccess = () => resolve(request.result)
-        request.onerror = () => reject(request.error ?? new Error('IndexedDB request failed'))
+        request.onerror = () =>
+          reject(request.error ?? new Error('IndexedDB request failed'))
         tx.oncomplete = () => db.close()
+      }),
+  )
+}
+
+function withStores(
+  storeNames: string[],
+  mode: IDBTransactionMode,
+  fn: (stores: Record<string, IDBObjectStore>) => void,
+): Promise<void> {
+  return openDb().then(
+    (db) =>
+      new Promise<void>((resolve, reject) => {
+        const tx = db.transaction(storeNames, mode)
+        const stores: Record<string, IDBObjectStore> = {}
+        for (const name of storeNames) {
+          stores[name] = tx.objectStore(name)
+        }
+        try {
+          fn(stores)
+        } catch (error) {
+          reject(error instanceof Error ? error : new Error(String(error)))
+          return
+        }
+        tx.oncomplete = () => {
+          db.close()
+          resolve()
+        }
+        tx.onerror = () =>
+          reject(tx.error ?? new Error('IndexedDB transaction failed'))
       }),
   )
 }
 
 export function normalizeScriptDocument(
   raw: Partial<ScriptDocument> & { elements?: ScriptDocument['elements'] },
+  fallbackProjectId: string,
 ): ScriptDocument {
-  const sample = createSampleScript()
-  const title = raw.titlePage?.title || raw.title || sample.title
+  const title =
+    raw.titlePage?.title || raw.title || 'Untitled Screenplay'
   const mergedTitlePage = {
     ...createDefaultTitlePage(title),
     ...(raw.titlePage ?? {}),
     title,
   }
-  // Legacy default stored "Written by" as a real value — treat as placeholder-only.
   const titlePage: TitlePageInfo = {
     ...mergedTitlePage,
     credit:
@@ -61,12 +111,23 @@ export function normalizeScriptDocument(
   const rawElements =
     Array.isArray(raw.elements) && raw.elements.length > 0
       ? raw.elements
-      : sample.elements
+      : createUntitledProject().script.elements
   const elements = pruneBlankElements(rawElements)
   const elementIds = new Set(elements.map((el) => el.id))
+  const projectId =
+    typeof raw.projectId === 'string' && raw.projectId.length > 0
+      ? raw.projectId
+      : fallbackProjectId
+  const id =
+    typeof raw.id === 'string' &&
+    raw.id.length > 0 &&
+    raw.id !== LEGACY_ACTIVE_SCRIPT_KEY
+      ? raw.id
+      : createId('script')
 
   return {
-    id: ACTIVE_SCRIPT_KEY,
+    id,
+    projectId,
     title,
     format: 'feature',
     titlePage,
@@ -98,37 +159,198 @@ export function normalizeScriptDocument(
           })
           .filter((comment) => elementIds.has(comment.elementId))
       : [],
-    createdAt: raw.createdAt ?? sample.createdAt,
+    createdAt: raw.createdAt ?? Date.now(),
     updatedAt: raw.updatedAt ?? Date.now(),
   }
 }
 
-export async function loadActiveScript(): Promise<ScriptDocument> {
-  try {
-    const existing = await withStore<ScriptDocument | undefined>('readonly', (store) =>
-      store.get(ACTIVE_SCRIPT_KEY),
-    )
-    if (existing && Array.isArray(existing.elements) && existing.elements.length > 0) {
-      return normalizeScriptDocument(existing)
-    }
-  } catch {
-    // Fall through to sample script
+function normalizeProject(
+  raw: Partial<Project>,
+  scriptId: string,
+): Project {
+  const now = Date.now()
+  return {
+    id:
+      typeof raw.id === 'string' && raw.id.length > 0
+        ? raw.id
+        : createId('proj'),
+    name:
+      typeof raw.name === 'string' && raw.name.trim().length > 0
+        ? raw.name.trim()
+        : 'Untitled',
+    format: 'feature',
+    scriptId,
+    createdAt: raw.createdAt ?? now,
+    updatedAt: raw.updatedAt ?? now,
   }
-
-  const sample = createSampleScript()
-  sample.id = ACTIVE_SCRIPT_KEY
-  try {
-    await saveActiveScript(sample)
-  } catch {
-    // Still return in-memory sample if first write fails
-  }
-  return sample
 }
 
+async function getAllScripts(): Promise<ScriptDocument[]> {
+  const rows = await withStore<ScriptDocument[]>(SCRIPTS_STORE, 'readonly', (store) =>
+    store.getAll(),
+  )
+  return Array.isArray(rows) ? rows : []
+}
+
+async function getAllProjects(): Promise<Project[]> {
+  const rows = await withStore<Project[]>(PROJECTS_STORE, 'readonly', (store) =>
+    store.getAll(),
+  )
+  return Array.isArray(rows) ? rows : []
+}
+
+async function getWorkspaceMeta(): Promise<WorkspaceMeta | undefined> {
+  return withStore<WorkspaceMeta | undefined>(WORKSPACE_STORE, 'readonly', (store) =>
+    store.get('workspace'),
+  )
+}
+
+export interface LoadedWorkspace {
+  project: Project
+  script: ScriptDocument
+  projects: Project[]
+}
+
+/**
+ * Load the active project + script, migrating the legacy single-script DB if needed.
+ */
+export async function loadWorkspace(): Promise<LoadedWorkspace> {
+  let projects = await getAllProjects()
+  let scripts = await getAllScripts()
+  let meta = await getWorkspaceMeta()
+
+  // Migrate legacy `scripts['active']` → Untitled project + one script.
+  const legacy = scripts.find((s) => s.id === LEGACY_ACTIVE_SCRIPT_KEY)
+  if (projects.length === 0) {
+    if (legacy && Array.isArray(legacy.elements) && legacy.elements.length > 0) {
+      const projectId = createId('proj')
+      const scriptId = createId('script')
+      const script = normalizeScriptDocument(
+        { ...legacy, id: scriptId, projectId },
+        projectId,
+      )
+      const project = normalizeProject(
+        {
+          name: script.title.trim() || 'Untitled',
+          createdAt: script.createdAt,
+          updatedAt: script.updatedAt,
+        },
+        scriptId,
+      )
+      project.id = projectId
+
+      await withStores(
+        [SCRIPTS_STORE, PROJECTS_STORE, WORKSPACE_STORE],
+        'readwrite',
+        (stores) => {
+          stores[SCRIPTS_STORE]!.put(script)
+          stores[SCRIPTS_STORE]!.delete(LEGACY_ACTIVE_SCRIPT_KEY)
+          stores[PROJECTS_STORE]!.put(project)
+          stores[WORKSPACE_STORE]!.put({
+            id: 'workspace',
+            activeProjectId: project.id,
+          } satisfies WorkspaceMeta)
+        },
+      )
+
+      projects = [project]
+      scripts = [script]
+      meta = { id: 'workspace', activeProjectId: project.id }
+    } else {
+      const { project, script } = createUntitledProject()
+      await withStores(
+        [SCRIPTS_STORE, PROJECTS_STORE, WORKSPACE_STORE],
+        'readwrite',
+        (stores) => {
+          stores[SCRIPTS_STORE]!.put(script)
+          stores[PROJECTS_STORE]!.put(project)
+          stores[WORKSPACE_STORE]!.put({
+            id: 'workspace',
+            activeProjectId: project.id,
+          } satisfies WorkspaceMeta)
+        },
+      )
+      projects = [project]
+      scripts = [script]
+      meta = { id: 'workspace', activeProjectId: project.id }
+    }
+  }
+
+  const activeId =
+    meta?.activeProjectId && projects.some((p) => p.id === meta.activeProjectId)
+      ? meta.activeProjectId
+      : projects[0]!.id
+
+  const project = projects.find((p) => p.id === activeId) ?? projects[0]!
+  let script = scripts.find((s) => s.id === project.scriptId)
+
+  if (!script || !Array.isArray(script.elements) || script.elements.length === 0) {
+    script = normalizeScriptDocument(
+      { projectId: project.id, id: project.scriptId },
+      project.id,
+    )
+    script.id = project.scriptId
+    await withStore(SCRIPTS_STORE, 'readwrite', (store) => store.put(script!))
+  } else {
+    script = normalizeScriptDocument(script, project.id)
+  }
+
+  if (meta?.activeProjectId !== project.id) {
+    await withStore(WORKSPACE_STORE, 'readwrite', (store) =>
+      store.put({
+        id: 'workspace',
+        activeProjectId: project.id,
+      } satisfies WorkspaceMeta),
+    )
+  }
+
+  return {
+    project: normalizeProject(project, script.id),
+    script,
+    projects: projects.map((p) =>
+      normalizeProject(p, p.scriptId || script!.id),
+    ),
+  }
+}
+
+export async function saveScriptDocument(doc: ScriptDocument): Promise<ScriptDocument> {
+  const payload = normalizeScriptDocument(
+    { ...doc, updatedAt: Date.now() },
+    doc.projectId,
+  )
+  await withStore(SCRIPTS_STORE, 'readwrite', (store) => store.put(payload))
+  return payload
+}
+
+export async function saveProject(project: Project): Promise<void> {
+  await withStore(PROJECTS_STORE, 'readwrite', (store) =>
+    store.put({ ...project, updatedAt: Date.now() }),
+  )
+}
+
+export async function setActiveProjectId(projectId: string): Promise<void> {
+  await withStore(WORKSPACE_STORE, 'readwrite', (store) =>
+    store.put({
+      id: 'workspace',
+      activeProjectId: projectId,
+    } satisfies WorkspaceMeta),
+  )
+}
+
+export async function listProjects(): Promise<Project[]> {
+  const projects = await getAllProjects()
+  return projects
+    .map((p) => normalizeProject(p, p.scriptId))
+    .sort((a, b) => b.updatedAt - a.updatedAt)
+}
+
+/** @deprecated Use loadWorkspace / saveScriptDocument */
+export async function loadActiveScript(): Promise<ScriptDocument> {
+  const { script } = await loadWorkspace()
+  return script
+}
+
+/** @deprecated Use saveScriptDocument */
 export async function saveActiveScript(doc: ScriptDocument): Promise<void> {
-  const payload = normalizeScriptDocument({
-    ...doc,
-    updatedAt: Date.now(),
-  })
-  await withStore('readwrite', (store) => store.put(payload))
+  await saveScriptDocument(doc)
 }
