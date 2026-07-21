@@ -106,19 +106,36 @@ export function ScriptElementLine({
 
   const applySuggestion = useCallback(
     (suggestion: SmartTypeSuggestion) => {
-      suppressMenuRef.current = true
+      // Scene headings are multi-step: INT/EXT → location → time.
+      // Keep SmartType open for the next field when more options remain.
+      const chainsNextField =
+        element.type === 'sceneHeading' &&
+        (suggestion.group === 'intExt' || suggestion.group === 'location')
+
+      if (chainsNextField) {
+        suppressMenuRef.current = false
+      } else {
+        suppressMenuRef.current = true
+        setMenuOpen(false)
+      }
+
       updateElementText(element.id, suggestion.insertText)
-      setMenuOpen(false)
       setMenuNavigated(false)
+      setActiveSuggestion(0)
+
       window.requestAnimationFrame(() => {
         const node = isSingleLine ? inputRef.current : textareaRef.current
         if (!node) return
         node.focus()
         const len = suggestion.insertText.length
         node.setSelectionRange(len, len)
+        if (chainsNextField) {
+          // Re-open after text/suggestions settle for the next field.
+          setMenuOpen(true)
+        }
       })
     },
-    [element.id, isSingleLine, updateElementText],
+    [element.id, element.type, isSingleLine, updateElementText],
   )
 
   const applyTabText = useCallback(

@@ -93,51 +93,56 @@ export function ScriptEditor() {
       <SceneNavigator />
       <div className="script-canvas-shell">
         <FindBar />
-        <ElementTypeQuickBar />
         <div className="script-canvas">
-          <TitlePage />
+          <div className="script-stage">
+            <div className="script-stage-pages">
+              <TitlePage />
 
-          {pages.map((page) => {
-            const first = page.elements[0]
-            const showContinuedOnCharacter =
-              Boolean(page.continuedCharacter) &&
-              first?.type === 'character' &&
-              first.text.replace(/\(.*?\)/g, '').trim().toUpperCase() ===
-                page.continuedCharacter
+              {pages.map((page) => {
+                const first = page.elements[0]
+                const showContinuedOnCharacter =
+                  Boolean(page.continuedCharacter) &&
+                  first?.type === 'character' &&
+                  first.text.replace(/\(.*?\)/g, '').trim().toUpperCase() ===
+                    page.continuedCharacter
 
-            return (
-              <section
-                key={`page-${page.pageNumber}`}
-                className="script-page script-page--live"
-                aria-label={`Page ${page.pageNumber}`}
-              >
-                <div className="script-page-body">
-                  {page.continuedCharacter && !showContinuedOnCharacter ? (
-                    <div className="sp-continued-cue">
-                      {page.continuedCharacter} (CONT&apos;D)
+                return (
+                  <section
+                    key={`page-${page.pageNumber}`}
+                    className="script-page script-page--live"
+                    aria-label={`Page ${page.pageNumber}`}
+                  >
+                    <div className="script-page-body">
+                      {page.continuedCharacter && !showContinuedOnCharacter ? (
+                        <div className="sp-continued-cue">
+                          {page.continuedCharacter} (CONT&apos;D)
+                        </div>
+                      ) : null}
+
+                      <div className="script-elements">
+                        {page.elements.map((element, index) => (
+                          <ScriptElementLine
+                            key={element.id}
+                            element={element}
+                            isSelected={selectedId === element.id}
+                            shouldFocus={focusRequestId === element.id}
+                            isFindMatch={activeMatchId === element.id}
+                            showContinued={index === 0 && showContinuedOnCharacter}
+                          />
+                        ))}
+                      </div>
+
+                      {page.showMore ? <div className="sp-more-cue">(MORE)</div> : null}
                     </div>
-                  ) : null}
 
-                  <div className="script-elements">
-                    {page.elements.map((element, index) => (
-                      <ScriptElementLine
-                        key={element.id}
-                        element={element}
-                        isSelected={selectedId === element.id}
-                        shouldFocus={focusRequestId === element.id}
-                        isFindMatch={activeMatchId === element.id}
-                        showContinued={index === 0 && showContinuedOnCharacter}
-                      />
-                    ))}
-                  </div>
+                    <footer className="script-page-number">{page.pageNumber}.</footer>
+                  </section>
+                )
+              })}
+            </div>
 
-                  {page.showMore ? <div className="sp-more-cue">(MORE)</div> : null}
-                </div>
-
-                <footer className="script-page-number">{page.pageNumber}.</footer>
-              </section>
-            )
-          })}
+            <ElementTypeQuickBar />
+          </div>
         </div>
       </div>
     </div>

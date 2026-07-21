@@ -226,7 +226,10 @@ export const useScriptStore = create<ScriptState>((set, get) => ({
       const doc = await loadActiveScript()
       set({
         doc,
-        selectedId: doc.elements[0]?.id ?? null,
+        // Do not auto-select/focus the first scene heading on load.
+        selectedId: null,
+        focusRequestId: null,
+        focusCaret: null,
         hydrated: true,
         dirty: false,
         saveStatus: 'saved',
@@ -237,7 +240,9 @@ export const useScriptStore = create<ScriptState>((set, get) => ({
       const doc = createSampleScript()
       set({
         doc,
-        selectedId: doc.elements[0]?.id ?? null,
+        selectedId: null,
+        focusRequestId: null,
+        focusCaret: null,
         hydrated: true,
         dirty: true,
         saveStatus: 'error',
