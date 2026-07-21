@@ -134,14 +134,21 @@ function getSceneHeadingSuggestions(
     }))
   }
 
-  // Bare start → INT/EXT
-  if (!upper.trim()) {
-    return ['INT.', 'EXT.', 'INT/EXT.', 'I/E.', 'EST.'].map((label) => ({
-      id: `intExt:${label}`,
-      label,
-      insertText: `${label} `,
-      group: 'intExt' as const,
-    }))
+  // Bare start or partial INT/EXT → offer completions
+  if (!upper.trim() || /^(I|IN|INT|E|EX|EXT|EST|I\/E|INT\/EXT)\.?$/i.test(upper.trim())) {
+    const options = ['INT.', 'EXT.', 'INT/EXT.', 'I/E.', 'EST.']
+    return options
+      .filter((label) => {
+        const q = upper.trim().replace(/\.$/, '')
+        if (!q) return true
+        return label.replace(/\.$/, '').startsWith(q) || label.startsWith(q)
+      })
+      .map((label) => ({
+        id: `intExt:${label}`,
+        label,
+        insertText: `${label} `,
+        group: 'intExt' as const,
+      }))
   }
 
   // After INT./EXT. suggest locations

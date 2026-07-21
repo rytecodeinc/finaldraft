@@ -3,7 +3,7 @@ import {
   collectCharacterNames,
   composeSceneHeading,
   createElement,
-  cycleElementType,
+  cycleTabElementType,
   ENTER_NEXT_TYPE,
   estimatePageCount,
   extractScenes,
@@ -219,7 +219,7 @@ export const useScriptStore = create<ScriptState>((set, get) => ({
   cycleType: (id, direction = 1) => {
     const element = get().doc.elements.find((el) => el.id === id)
     if (!element) return
-    get().setElementType(id, cycleElementType(element.type, direction))
+    get().setElementType(id, cycleTabElementType(element.type, direction))
   },
 
   insertAfter: (id, type, text = '') => {

@@ -1,15 +1,7 @@
 import type { ElementType, ParsedSceneHeading, SceneInfo, ScreenplayElement } from './types'
 import { ELEMENT_TYPES } from './types'
 
-/** Natural next element type when pressing Enter (Final Draft–style). */
-export const ENTER_NEXT_TYPE: Record<ElementType, ElementType> = {
-  sceneHeading: 'action',
-  action: 'action',
-  character: 'dialogue',
-  parenthetical: 'dialogue',
-  dialogue: 'character',
-  transition: 'sceneHeading',
-}
+export { ENTER_NEXT_TYPE, cycleTabElementType, TAB_TYPE_ORDER } from './keyboardFlow'
 
 export function cycleElementType(type: ElementType, direction: 1 | -1 = 1): ElementType {
   const index = ELEMENT_TYPES.indexOf(type)

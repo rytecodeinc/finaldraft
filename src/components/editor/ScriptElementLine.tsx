@@ -10,6 +10,7 @@ import {
 import { SmartTypeMenu } from '@/components/editor/SmartTypeMenu'
 import { formatElementText } from '@/screenplay/elementRules'
 import { getSmartTypeSuggestions, type SmartTypeSuggestion } from '@/screenplay/smartType'
+import { resolveTabAction } from '@/screenplay/tabBehavior'
 import type { ElementType, ScreenplayElement } from '@/screenplay/types'
 import { ELEMENT_LABELS } from '@/screenplay/types'
 import { useScriptStore } from '@/stores/scriptStore'
@@ -47,6 +48,7 @@ export function ScriptElementLine({
 
   const [menuOpen, setMenuOpen] = useState(false)
   const [activeSuggestion, setActiveSuggestion] = useState(0)
+  const [menuNavigated, setMenuNavigated] = useState(false)
 
   const isSingleLine =
     element.type === 'character' ||
@@ -83,18 +85,34 @@ export function ScriptElementLine({
 
   useEffect(() => {
     setActiveSuggestion(0)
+    setMenuNavigated(false)
     setMenuOpen(suggestions.length > 0 && isSelected)
   }, [suggestions, isSelected, element.text])
 
   const applySuggestion = useCallback(
     (suggestion: SmartTypeSuggestion) => {
       updateElementText(element.id, suggestion.insertText)
-      setMenuOpen(false)
+      setMenuOpen(true)
       window.requestAnimationFrame(() => {
         const node = isSingleLine ? inputRef.current : textareaRef.current
         if (!node) return
         node.focus()
         const len = suggestion.insertText.length
+        node.setSelectionRange(len, len)
+      })
+    },
+    [element.id, isSingleLine, updateElementText],
+  )
+
+  const applyTabText = useCallback(
+    (nextText: string) => {
+      updateElementText(element.id, nextText)
+      setMenuOpen(true)
+      window.requestAnimationFrame(() => {
+        const node = isSingleLine ? inputRef.current : textareaRef.current
+        if (!node) return
+        node.focus()
+        const len = nextText.length
         node.setSelectionRange(len, len)
       })
     },
@@ -118,54 +136,80 @@ export function ScriptElementLine({
 
   const onBlur = useCallback(() => {
     setMenuOpen(false)
-    let text = element.text
-    if (showContinued && element.type === 'character') {
-      // Keep CONT'D as display-only; stored text stays clean
-    }
-    const formatted = formatElementText(element.type, text)
+    const formatted = formatElementText(element.type, element.text)
     if (formatted !== element.text) {
       updateElementText(element.id, formatted)
     }
-  }, [element.id, element.text, element.type, showContinued, updateElementText])
+  }, [element.id, element.text, element.type, updateElementText])
 
   const onKeyDown = useCallback(
     (event: ReactKeyboardEvent<HTMLTextAreaElement | HTMLInputElement>) => {
-      if (menuOpen && suggestions.length > 0) {
-        if (event.key === 'ArrowDown') {
-          event.preventDefault()
-          setActiveSuggestion((i) => (i + 1) % suggestions.length)
-          return
-        }
-        if (event.key === 'ArrowUp') {
-          event.preventDefault()
-          setActiveSuggestion((i) => (i - 1 + suggestions.length) % suggestions.length)
-          return
-        }
-        if (event.key === 'Escape') {
-          event.preventDefault()
-          setMenuOpen(false)
-          return
-        }
-        if (event.key === 'Enter' && !event.shiftKey) {
-          event.preventDefault()
-          applySuggestion(suggestions[activeSuggestion]!)
-          return
-        }
-        if (event.key === 'Tab' && !event.shiftKey) {
-          event.preventDefault()
-          applySuggestion(suggestions[activeSuggestion]!)
-          return
-        }
+      if (event.key === 'ArrowDown' && menuOpen && suggestions.length > 0) {
+        event.preventDefault()
+        setMenuNavigated(true)
+        setActiveSuggestion((i) => (i + 1) % suggestions.length)
+        return
+      }
+      if (event.key === 'ArrowUp' && menuOpen && suggestions.length > 0) {
+        event.preventDefault()
+        setMenuNavigated(true)
+        setActiveSuggestion(
+          (i) => (i - 1 + suggestions.length) % suggestions.length,
+        )
+        return
+      }
+      if (event.key === 'Escape' && menuOpen) {
+        event.preventDefault()
+        setMenuOpen(false)
+        setMenuNavigated(false)
+        return
+      }
+
+      // Enter accepts SmartType only after the writer navigates the menu.
+      // Otherwise Enter always creates the next logical element.
+      if (
+        event.key === 'Enter' &&
+        !event.shiftKey &&
+        menuOpen &&
+        menuNavigated &&
+        suggestions.length > 0
+      ) {
+        event.preventDefault()
+        applySuggestion(suggestions[activeSuggestion]!)
+        return
       }
 
       if (event.key === 'Tab') {
         event.preventDefault()
-        cycleType(element.id, event.shiftKey ? -1 : 1)
+        const action = resolveTabAction({
+          elementType: element.type,
+          text: element.text,
+          suggestions,
+          activeSuggestionIndex: activeSuggestion,
+          menuOpen,
+          shiftKey: event.shiftKey,
+          elements,
+        })
+
+        if (action.kind === 'text') {
+          applyTabText(action.text)
+          return
+        }
+        if (action.kind === 'accept') {
+          applySuggestion(action.suggestion)
+          return
+        }
+        if (action.kind === 'cycle') {
+          setMenuOpen(false)
+          cycleType(element.id, action.direction)
+          return
+        }
         return
       }
 
       if (event.key === 'Enter' && !event.shiftKey) {
         event.preventDefault()
+        setMenuOpen(false)
         handleEnter(element.id)
         return
       }
@@ -196,11 +240,15 @@ export function ScriptElementLine({
     [
       activeSuggestion,
       applySuggestion,
+      applyTabText,
       cycleType,
       deleteElement,
       element.id,
       element.text,
+      element.type,
+      elements,
       handleEnter,
+      menuNavigated,
       menuOpen,
       setElementType,
       suggestions,

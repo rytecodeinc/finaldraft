@@ -807,7 +807,7 @@
   flex-direction: column;
   align-items: center;
   gap: 28px;
-  padding: 28px 56px 48px 20px;
+  padding: 28px 44px 48px 20px;
   overflow: auto;
   background:
     radial-gradient(800px 300px at 50% 0%, rgba(232, 168, 56, 0.05), transparent 60%),
@@ -816,17 +816,18 @@
 
 .quick-actions {
   position: absolute;
-  top: 16px;
-  right: 14px;
+  top: 12px;
+  right: 2px;
   z-index: 12;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 4px;
-  padding: 8px 6px;
-  border-radius: var(--radius-md);
-  background: color-mix(in srgb, var(--bg-elevated) 92%, transparent);
+  padding: 8px 5px;
+  border-radius: var(--radius-md) 0 0 var(--radius-md);
+  background: color-mix(in srgb, var(--bg-elevated) 94%, transparent);
   border: 1px solid var(--border-default);
+  border-right: none;
   box-shadow: var(--shadow-md);
   backdrop-filter: blur(10px);
   animation: page-enter var(--duration-normal) var(--ease-out) both;
