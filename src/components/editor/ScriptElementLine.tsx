@@ -52,6 +52,7 @@ export function ScriptElementLine({
   const [menuOpen, setMenuOpen] = useState(false)
   const [activeSuggestion, setActiveSuggestion] = useState(0)
   const [menuNavigated, setMenuNavigated] = useState(false)
+  const suppressMenuRef = useRef(false)
 
   const isSingleLine =
     element.type === 'character' ||
@@ -95,13 +96,20 @@ export function ScriptElementLine({
   useEffect(() => {
     setActiveSuggestion(0)
     setMenuNavigated(false)
+    if (suppressMenuRef.current) {
+      suppressMenuRef.current = false
+      setMenuOpen(false)
+      return
+    }
     setMenuOpen(suggestions.length > 0 && isSelected)
   }, [suggestions, isSelected, element.text])
 
   const applySuggestion = useCallback(
     (suggestion: SmartTypeSuggestion) => {
+      suppressMenuRef.current = true
       updateElementText(element.id, suggestion.insertText)
-      setMenuOpen(true)
+      setMenuOpen(false)
+      setMenuNavigated(false)
       window.requestAnimationFrame(() => {
         const node = isSingleLine ? inputRef.current : textareaRef.current
         if (!node) return
@@ -176,8 +184,7 @@ export function ScriptElementLine({
         return
       }
 
-      // Enter accepts SmartType only after the writer navigates the menu.
-      // Otherwise Enter always creates the next logical element.
+      // Enter selects the highlighted/hovered SmartType option.
       if (
         event.key === 'Enter' &&
         !event.shiftKey &&
@@ -327,7 +334,10 @@ export function ScriptElementLine({
             suggestions={suggestions}
             activeIndex={activeSuggestion}
             onSelect={applySuggestion}
-            onHover={setActiveSuggestion}
+            onHover={(index) => {
+              setMenuNavigated(true)
+              setActiveSuggestion(index)
+            }}
           />
         ) : null}
       </div>
