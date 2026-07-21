@@ -15,6 +15,7 @@ import { findInScript, type FindMatch, type FindTypeFilter } from '@/screenplay/
 import { loadActiveScript, saveActiveScript } from '@/screenplay/idb'
 import { createSampleScript } from '@/screenplay/sampleScript'
 import type {
+  ElementComment,
   ElementType,
   SaveStatus,
   SceneInfo,
@@ -35,6 +36,7 @@ interface HistorySnapshot {
   title: string
   titlePage: TitlePageInfo
   elements: ScreenplayElement[]
+  comments: ElementComment[]
   selectedId: string | null
   caret: CaretPosition | null
 }
@@ -43,6 +45,11 @@ export interface SceneMetaPatch {
   intExt?: string | null
   location?: string | null
   timeOfDay?: string | null
+}
+
+export interface CommentDraft {
+  elementId: string
+  text: string
 }
 
 interface ScriptState {
@@ -60,6 +67,8 @@ interface ScriptState {
   findQuery: string
   findTypeFilter: FindTypeFilter
   findMatchIndex: number
+  commentDraft: CommentDraft | null
+  activeCommentId: string | null
   hydrate: () => Promise<void>
   selectElement: (id: string | null) => void
   requestFocus: (id: string, caret?: CaretPosition | null) => void
@@ -88,6 +97,12 @@ interface ScriptState {
   getScenes: () => SceneInfo[]
   getCharacters: () => string[]
   getPageEstimate: () => number
+  startCommentDraft: (elementId: string) => void
+  setCommentDraftText: (text: string) => void
+  cancelCommentDraft: () => void
+  submitCommentDraft: () => void
+  setActiveComment: (commentId: string | null) => void
+  deleteComment: (commentId: string) => void
 }
 
 let autosaveTimer: ReturnType<typeof setTimeout> | null = null
@@ -98,8 +113,24 @@ function cloneElements(elements: ScreenplayElement[]): ScreenplayElement[] {
   return elements.map((el) => ({ ...el }))
 }
 
+function cloneComments(comments: ElementComment[]): ElementComment[] {
+  return comments.map((comment) => ({ ...comment }))
+}
+
 function cloneTitlePage(titlePage: TitlePageInfo): TitlePageInfo {
   return { ...titlePage }
+}
+
+function commentAuthorName(doc: ScriptDocument): string {
+  const fromTitle = doc.titlePage.authors.trim().split('\n')[0]?.trim()
+  return fromTitle || 'You'
+}
+
+function createCommentId(): string {
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
+    return crypto.randomUUID()
+  }
+  return `cmt_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 9)}`
 }
 
 function captureCaret(): CaretPosition | null {
@@ -122,6 +153,7 @@ function snapshotDoc(
     title: doc.title,
     titlePage: cloneTitlePage(doc.titlePage),
     elements: cloneElements(doc.elements),
+    comments: cloneComments(doc.comments),
     selectedId,
     caret,
   }
@@ -131,7 +163,8 @@ function snapshotsEqual(a: HistorySnapshot, b: HistorySnapshot): boolean {
   return (
     a.title === b.title &&
     JSON.stringify(a.titlePage) === JSON.stringify(b.titlePage) &&
-    JSON.stringify(a.elements) === JSON.stringify(b.elements)
+    JSON.stringify(a.elements) === JSON.stringify(b.elements) &&
+    JSON.stringify(a.comments) === JSON.stringify(b.comments)
   )
 }
 
@@ -218,6 +251,8 @@ export const useScriptStore = create<ScriptState>((set, get) => ({
   findQuery: '',
   findTypeFilter: 'all',
   findMatchIndex: 0,
+  commentDraft: null,
+  activeCommentId: null,
 
   hydrate: async () => {
     if (get().hydrated) return
@@ -353,10 +388,13 @@ export const useScriptStore = create<ScriptState>((set, get) => ({
       doc: {
         ...state.doc,
         elements: state.doc.elements.filter((el) => el.id !== id),
+        comments: state.doc.comments.filter((comment) => comment.elementId !== id),
         updatedAt: Date.now(),
       },
       selectedId: fallback?.id ?? null,
       focusRequestId: fallback?.id ?? null,
+      commentDraft:
+        state.commentDraft?.elementId === id ? null : state.commentDraft,
     }))
     scheduleAutosave(get, set)
     return fallback?.id ?? null
@@ -417,6 +455,7 @@ export const useScriptStore = create<ScriptState>((set, get) => ({
         title: previous.title,
         titlePage: cloneTitlePage(previous.titlePage),
         elements: cloneElements(previous.elements),
+        comments: cloneComments(previous.comments),
         updatedAt: Date.now(),
       },
       ...focus,
@@ -443,6 +482,7 @@ export const useScriptStore = create<ScriptState>((set, get) => ({
         title: next.title,
         titlePage: cloneTitlePage(next.titlePage),
         elements: cloneElements(next.elements),
+        comments: cloneComments(next.comments),
         updatedAt: Date.now(),
       },
       ...focus,
@@ -516,6 +556,70 @@ export const useScriptStore = create<ScriptState>((set, get) => ({
   getScenes: () => extractScenes(get().doc.elements),
   getCharacters: () => collectCharacterNames(get().doc.elements),
   getPageEstimate: () => estimatePageCount(get().doc.elements),
+
+  startCommentDraft: (elementId) => {
+    const exists = get().doc.elements.some((el) => el.id === elementId)
+    if (!exists) return
+    set({
+      selectedId: elementId,
+      commentDraft: { elementId, text: '' },
+      activeCommentId: null,
+    })
+    scrollElementIntoView(elementId)
+  },
+
+  setCommentDraftText: (text) => {
+    const draft = get().commentDraft
+    if (!draft) return
+    set({ commentDraft: { ...draft, text } })
+  },
+
+  cancelCommentDraft: () => set({ commentDraft: null }),
+
+  submitCommentDraft: () => {
+    const draft = get().commentDraft
+    if (!draft) return
+    const text = draft.text.trim()
+    if (!text) return
+
+    pushHistory(get, set)
+    const now = Date.now()
+    const comment: ElementComment = {
+      id: createCommentId(),
+      elementId: draft.elementId,
+      author: commentAuthorName(get().doc),
+      text,
+      createdAt: now,
+      updatedAt: now,
+    }
+
+    set((state) => ({
+      doc: {
+        ...state.doc,
+        comments: [...state.doc.comments, comment],
+        updatedAt: now,
+      },
+      commentDraft: null,
+      activeCommentId: comment.id,
+    }))
+    scheduleAutosave(get, set)
+  },
+
+  setActiveComment: (commentId) => set({ activeCommentId: commentId }),
+
+  deleteComment: (commentId) => {
+    pushHistory(get, set)
+    set((state) => ({
+      doc: {
+        ...state.doc,
+        comments: state.doc.comments.filter((comment) => comment.id !== commentId),
+        updatedAt: Date.now(),
+      },
+      activeCommentId:
+        state.activeCommentId === commentId ? null : state.activeCommentId,
+    }))
+    scheduleAutosave(get, set)
+  },
 }))
 
 export function getSelectedElement(state: ScriptState): ScreenplayElement | null {

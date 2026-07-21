@@ -20,6 +20,7 @@ interface ScriptElementLineProps {
   isSelected: boolean
   shouldFocus: boolean
   isFindMatch?: boolean
+  hasComment?: boolean
   showContinued?: boolean
 }
 
@@ -33,6 +34,7 @@ export function ScriptElementLine({
   isSelected,
   shouldFocus,
   isFindMatch = false,
+  hasComment = false,
   showContinued = false,
 }: ScriptElementLineProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -320,7 +322,7 @@ export function ScriptElementLine({
 
   return (
     <div
-      className={`sp-element sp-element--${element.type} ${isSelected ? 'is-selected' : ''} ${isFindMatch ? 'is-find-match' : ''}`.trim()}
+      className={`sp-element sp-element--${element.type} ${isSelected ? 'is-selected' : ''} ${isFindMatch ? 'is-find-match' : ''} ${hasComment ? 'has-comment' : ''}`.trim()}
       data-element-id={element.id}
       data-element-type={element.type}
     >

@@ -2,6 +2,7 @@ import { useEffect, useMemo } from 'react'
 import { ElementTypeQuickBar } from '@/components/editor/ElementTypeQuickBar'
 import { FindBar } from '@/components/editor/FindBar'
 import { SceneNavigator } from '@/components/editor/SceneNavigator'
+import { ScriptCommentsRail } from '@/components/editor/ScriptCommentsRail'
 import { ScriptElementLine } from '@/components/editor/ScriptElementLine'
 import { TitlePage } from '@/components/editor/TitlePage'
 import { findInScript } from '@/screenplay/findScript'
@@ -12,6 +13,9 @@ export function ScriptEditor() {
   const hydrated = useScriptStore((s) => s.hydrated)
   const hydrate = useScriptStore((s) => s.hydrate)
   const elements = useScriptStore((s) => s.doc.elements)
+  const comments = useScriptStore((s) => s.doc.comments)
+  const commentDraft = useScriptStore((s) => s.commentDraft)
+  const activeCommentId = useScriptStore((s) => s.activeCommentId)
   const selectedId = useScriptStore((s) => s.selectedId)
   const focusRequestId = useScriptStore((s) => s.focusRequestId)
   const undo = useScriptStore((s) => s.undo)
@@ -30,6 +34,16 @@ export function ScriptEditor() {
     [elements, findQuery, findTypeFilter],
   )
   const activeMatchId = findMatches[findMatchIndex]?.elementId ?? null
+
+  const commentedElementIds = useMemo(() => {
+    const ids = new Set(comments.map((comment) => comment.elementId))
+    if (commentDraft) ids.add(commentDraft.elementId)
+    if (activeCommentId) {
+      const active = comments.find((comment) => comment.id === activeCommentId)
+      if (active) ids.add(active.elementId)
+    }
+    return ids
+  }, [comments, commentDraft, activeCommentId])
 
   useEffect(() => {
     if (!hydrated) void hydrate()
@@ -127,6 +141,7 @@ export function ScriptEditor() {
                             isSelected={selectedId === element.id}
                             shouldFocus={focusRequestId === element.id}
                             isFindMatch={activeMatchId === element.id}
+                            hasComment={commentedElementIds.has(element.id)}
                             showContinued={index === 0 && showContinuedOnCharacter}
                           />
                         ))}
@@ -141,6 +156,7 @@ export function ScriptEditor() {
               })}
             </div>
 
+            <ScriptCommentsRail />
             <ElementTypeQuickBar />
           </div>
         </div>

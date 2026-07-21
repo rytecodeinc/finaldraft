@@ -19,6 +19,7 @@ export function createSampleScript(): ScriptDocument {
     },
     createdAt: now,
     updatedAt: now,
+    comments: [],
     elements: [
       createElement('sceneHeading', "INT. WRITER'S STUDY - NIGHT"),
       createElement(

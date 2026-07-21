@@ -43,6 +43,9 @@
   --accent-muted: rgba(201, 146, 42, 0.14);
   --accent-text: #8a6414;
 
+  --comment-accent: #1a73e8;
+  --comment-accent-hover: #1557b0;
+
   --success: #2f7a55;
   --warning: #b8860b;
   --danger: #c4453a;
@@ -80,6 +83,9 @@
   --accent-hover: #f0b84a;
   --accent-muted: rgba(232, 168, 56, 0.16);
   --accent-text: #f0c56a;
+
+  --comment-accent: #8ab4f8;
+  --comment-accent-hover: #aecbfa;
 
   --success: #4caf7a;
   --warning: #e0a84a;

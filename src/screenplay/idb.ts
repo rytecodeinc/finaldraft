@@ -58,6 +58,7 @@ export function normalizeScriptDocument(
       Array.isArray(raw.elements) && raw.elements.length > 0
         ? raw.elements
         : sample.elements,
+    comments: Array.isArray(raw.comments) ? raw.comments : [],
     createdAt: raw.createdAt ?? sample.createdAt,
     updatedAt: raw.updatedAt ?? Date.now(),
   }

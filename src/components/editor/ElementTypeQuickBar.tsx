@@ -2,6 +2,7 @@ import {
   AlignLeft,
   Clapperboard,
   CornerDownRight,
+  MessageSquarePlus,
   MessageSquareText,
   MoveRight,
   UserRound,
@@ -24,11 +25,19 @@ export function ElementTypeQuickBar() {
   const elements = useScriptStore((s) => s.doc.elements)
   const setElementType = useScriptStore((s) => s.setElementType)
   const requestFocus = useScriptStore((s) => s.requestFocus)
+  const startCommentDraft = useScriptStore((s) => s.startCommentDraft)
+  const commentDraft = useScriptStore((s) => s.commentDraft)
+  const comments = useScriptStore((s) => s.doc.comments)
 
   const selected =
     selectedId == null
       ? null
       : (elements.find((el) => el.id === selectedId) ?? null)
+
+  const commentActive =
+    Boolean(selected) &&
+    (commentDraft?.elementId === selected?.id ||
+      comments.some((comment) => comment.elementId === selected?.id))
 
   return (
     <div className="quick-actions" role="toolbar" aria-label="Element type">
@@ -59,6 +68,26 @@ export function ElementTypeQuickBar() {
           </button>
         )
       })}
+
+      <div className="quick-actions-divider" aria-hidden />
+
+      <button
+        type="button"
+        className={`quick-actions-btn quick-actions-btn--comment ${commentActive ? 'is-active' : ''}`.trim()}
+        title="Add comment"
+        aria-label="Add comment"
+        aria-pressed={commentActive}
+        disabled={!selected}
+        onMouseDown={(event) => {
+          event.preventDefault()
+        }}
+        onClick={() => {
+          if (!selected) return
+          startCommentDraft(selected.id)
+        }}
+      >
+        <MessageSquarePlus size={16} strokeWidth={1.75} />
+      </button>
     </div>
   )
 }

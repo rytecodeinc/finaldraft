@@ -15,6 +15,16 @@ export interface ScreenplayElement {
   text: string
 }
 
+/** Google Docs–style margin comment attached to a script element. */
+export interface ElementComment {
+  id: string
+  elementId: string
+  author: string
+  text: string
+  createdAt: number
+  updatedAt: number
+}
+
 /** Full Final Draft–style title page fields. */
 export interface TitlePageInfo {
   title: string
@@ -33,6 +43,7 @@ export interface ScriptDocument {
   format: 'feature'
   titlePage: TitlePageInfo
   elements: ScreenplayElement[]
+  comments: ElementComment[]
   createdAt: number
   updatedAt: number
 }
