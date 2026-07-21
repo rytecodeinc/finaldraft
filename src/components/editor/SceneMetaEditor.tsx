@@ -1,8 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
-import {
-  INT_EXT_OPTIONS,
-  TIME_OF_DAY_OPTIONS,
-} from '@/screenplay/elementRules'
+import { useEffect, useState } from 'react'
+import { INT_EXT_OPTIONS } from '@/screenplay/elementRules'
+import { collectTimesOfDay } from '@/screenplay/smartType'
 import type { SceneInfo } from '@/screenplay/types'
 import { useScriptStore } from '@/stores/scriptStore'
 
@@ -12,22 +10,21 @@ interface SceneMetaEditorProps {
 
 export function SceneMetaEditor({ scene }: SceneMetaEditorProps) {
   const updateSceneMeta = useScriptStore((s) => s.updateSceneMeta)
-  const locationRef = useRef<HTMLInputElement>(null)
-  const timeRef = useRef<HTMLInputElement>(null)
+  const elements = useScriptStore((s) => s.doc.elements)
 
   const [intExt, setIntExt] = useState(scene.intExt ?? 'INT.')
   const [location, setLocation] = useState(scene.location ?? '')
   const [timeOfDay, setTimeOfDay] = useState(scene.timeOfDay ?? '')
 
   // Sync from the script when the scene changes externally, but never while
-  // the user is mid-edit in a meta field (preserves spaces / caret).
+  // the user is mid-edit in the location field (preserves spaces / caret).
   useEffect(() => {
-    const locationFocused = document.activeElement === locationRef.current
-    const timeFocused = document.activeElement === timeRef.current
+    const locationFocused =
+      document.activeElement?.id === 'inspector-location'
 
     setIntExt(scene.intExt ?? 'INT.')
     if (!locationFocused) setLocation(scene.location ?? '')
-    if (!timeFocused) setTimeOfDay(scene.timeOfDay ?? '')
+    setTimeOfDay(scene.timeOfDay ?? '')
   }, [scene.id, scene.heading, scene.intExt, scene.location, scene.timeOfDay])
 
   const intExtOptions = INT_EXT_OPTIONS.includes(
@@ -36,11 +33,12 @@ export function SceneMetaEditor({ scene }: SceneMetaEditorProps) {
     ? INT_EXT_OPTIONS
     : ([intExt, ...INT_EXT_OPTIONS] as string[])
 
+  // Same source as SmartType time suggestions (script times + defaults).
+  const smartTypeTimes = collectTimesOfDay(elements)
   const timeOptions =
-    timeOfDay &&
-    !TIME_OF_DAY_OPTIONS.includes(timeOfDay as (typeof TIME_OF_DAY_OPTIONS)[number])
-      ? ([timeOfDay, ...TIME_OF_DAY_OPTIONS] as string[])
-      : TIME_OF_DAY_OPTIONS
+    timeOfDay && !smartTypeTimes.includes(timeOfDay)
+      ? [timeOfDay, ...smartTypeTimes]
+      : smartTypeTimes
 
   return (
     <>
@@ -67,7 +65,6 @@ export function SceneMetaEditor({ scene }: SceneMetaEditorProps) {
         <label htmlFor="inspector-location">Location</label>
         <input
           id="inspector-location"
-          ref={locationRef}
           type="text"
           value={location}
           onChange={(e) => {
@@ -87,30 +84,22 @@ export function SceneMetaEditor({ scene }: SceneMetaEditorProps) {
 
       <div className="inspector-field">
         <label htmlFor="inspector-time">Time of day</label>
-        <input
+        <select
           id="inspector-time"
-          ref={timeRef}
-          type="text"
-          list="inspector-time-options"
           value={timeOfDay}
           onChange={(e) => {
             const value = e.target.value
             setTimeOfDay(value)
             updateSceneMeta(scene.id, { timeOfDay: value })
           }}
-          onBlur={() => {
-            const normalized = timeOfDay.replace(/\s+/g, ' ').trim()
-            setTimeOfDay(normalized)
-            updateSceneMeta(scene.id, { timeOfDay: normalized })
-          }}
-          placeholder="DAY"
-          autoComplete="off"
-        />
-        <datalist id="inspector-time-options">
+        >
+          <option value="">—</option>
           {timeOptions.map((option) => (
-            <option key={option} value={option} />
+            <option key={option} value={option}>
+              {option}
+            </option>
           ))}
-        </datalist>
+        </select>
       </div>
 
       <div className="inspector-row">

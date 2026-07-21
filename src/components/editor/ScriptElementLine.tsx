@@ -356,6 +356,12 @@ export function ScriptElementLine({
               setMenuNavigated(true)
               setActiveSuggestion(index)
             }}
+            anchorRef={isSingleLine ? inputRef : textareaRef}
+            insetRatio={
+              element.type === 'character' || element.type === 'transition'
+                ? 0.2
+                : 0
+            }
           />
         ) : null}
       </div>
