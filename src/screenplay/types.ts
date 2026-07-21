@@ -15,10 +15,23 @@ export interface ScreenplayElement {
   text: string
 }
 
+/** Full Final Draft–style title page fields. */
+export interface TitlePageInfo {
+  title: string
+  credit: string
+  authors: string
+  basedOn: string
+  contact: string
+  copyright: string
+  draftDate: string
+  revision: string
+}
+
 export interface ScriptDocument {
   id: string
   title: string
   format: 'feature'
+  titlePage: TitlePageInfo
   elements: ScreenplayElement[]
   createdAt: number
   updatedAt: number
@@ -49,4 +62,21 @@ export const ELEMENT_LABELS: Record<ElementType, string> = {
   parenthetical: 'Parenthetical',
   dialogue: 'Dialogue',
   transition: 'Transition',
+}
+
+export function createDefaultTitlePage(title = 'Untitled Screenplay'): TitlePageInfo {
+  return {
+    title,
+    credit: 'Written by',
+    authors: '',
+    basedOn: '',
+    contact: '',
+    copyright: '',
+    draftDate: new Date().toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    }),
+    revision: 'First Draft',
+  }
 }

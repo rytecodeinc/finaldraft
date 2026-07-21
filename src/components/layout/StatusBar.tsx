@@ -59,7 +59,7 @@ export function StatusBar() {
             {title}
           </button>
         ) : (
-          <span className="statusbar-item">Milestone 2 · Editor</span>
+          <span className="statusbar-item">Milestone 3 · Intelligence</span>
         )}
       </div>
       <div className="statusbar-group">

@@ -1,58 +1,29 @@
 # SceneDesk
 
-Professional screenwriting IDE — Milestone 2.
+Professional screenwriting IDE inspired by Final Draft’s workflow.
 
-SceneDesk is a structured screenplay writing environment inspired by Final Draft’s workflow. Every line is a typed screenplay element, not freeform rich text.
-
-## Stack
-
-- React 19 + TypeScript
-- Vite
-- React Router
-- Zustand
-- IndexedDB (script persistence)
-- Lucide icons
-
-## Preview locally
+## Preview
 
 ```bash
 npm install
 npm run dev
 ```
 
-Open the URL Vite prints (usually `http://localhost:5173`), then go to **Script**.
+Open **Script** (usually `http://localhost:5173/script`).
 
-## What’s included
+## Milestones
 
-### Milestone 1 — IDE shell
-- Menu bar, toolbar, sidebar, editor area, inspector, bottom panel, status bar
-- Light / dark themes and persisted layout
+### 1 — IDE shell
+Menu bar, toolbar, sidebar, inspector, bottom panel, themes, persisted layout.
 
-### Milestone 2 — Structured editor
-- Element types: Scene Heading, Action, Character, Parenthetical, Dialogue, Transition
-- **Enter** creates the next logical element; **Tab** / **Shift+Tab** cycles type
-- Feature-film defaults (no TV act breaks yet)
-- Active script autosaved to **IndexedDB**
-- Inspector reflects selection + parsed scene meta
-- Scene navigator for jump-to-scene
-- Undo / redo and toolbar save (`⌘/Ctrl+S`)
+### 2 — Structured editor
+Typed elements, Enter/Tab flow, IndexedDB, scene navigator, US Letter pagination, inspector meta, type quick bar.
 
-## Keyboard
+### 3 — Script-page writing intelligence
+- **SmartType** suggestions for characters, locations, times, and transitions
+- **Full Final Draft–style title page** (credit, authors, based on, contact, copyright, draft date, revision)
+- **Find in script** (`⌘/Ctrl+F`) with element-type filter
+- **(MORE)** / **(CONT'D)** chrome across dialogue page breaks
 
-| Shortcut | Action |
-|----------|--------|
-| `Enter` | Next logical element (or cycle type if empty) |
-| `Tab` / `Shift+Tab` | Cycle element type |
-| `Backspace` on empty | Delete element |
-| `⌘/Ctrl+S` | Save now |
-| `⌘/Ctrl+Z` / `⇧⌘Z` | Undo / redo |
-| `⌘/Ctrl+B` / `I` / `J` | Sidebar / inspector / bottom panel |
-
-## Scripts
-
-| Command | Description |
-|---------|-------------|
-| `npm run dev` | Dev server |
-| `npm run build` | Typecheck + production build |
-| `npm run preview` | Preview production build |
-| `npm run lint` | Oxlint |
+## Out of scope (later)
+Colored revisions, locked pages, reports, Fountain, outline/beat board sync, collaboration, TV acts, backend.

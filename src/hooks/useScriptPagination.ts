@@ -1,25 +1,27 @@
 import { useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { getPageBreakChrome } from '@/screenplay/pageChrome'
 import type { ScreenplayElement } from '@/screenplay/types'
 
-/** US Letter content box height after 1" vertical padding (96dpi). */
-export const PAGE_CONTENT_HEIGHT_PX = 864 // 11in - 2in padding
+/** US Letter content box height after vertical padding (96dpi). */
+export const PAGE_CONTENT_HEIGHT_PX = 864 // 11in - 2in
 
 export type PageSlice = {
   pageNumber: number
   elements: ScreenplayElement[]
+  showMore: boolean
+  continuedCharacter: string | null
 }
 
 function packElementIds(
   elementIds: string[],
   heights: number[],
-  titleHeight: number,
   maxHeight: number,
 ): string[][] {
   if (elementIds.length === 0) return [[]]
 
   const pages: string[][] = []
   let current: string[] = []
-  let used = titleHeight
+  let used = 0
 
   elementIds.forEach((id, index) => {
     const height = Math.max(heights[index] ?? 28, 24)
@@ -50,12 +52,10 @@ function samePages(a: string[][], b: string[][]): boolean {
 }
 
 /**
- * Measures live element nodes and packs them into US Letter pages.
+ * Measures live element nodes and packs them into US Letter body pages.
+ * Title page is rendered separately and is not included here.
  */
-export function useScriptPagination(
-  elements: ScreenplayElement[],
-  title: string,
-) {
+export function useScriptPagination(elements: ScreenplayElement[]) {
   const [pageIdGroups, setPageIdGroups] = useState<string[][]>(() => [
     elements.map((el) => el.id),
   ])
@@ -64,11 +64,10 @@ export function useScriptPagination(
 
   const elementIds = useMemo(() => elements.map((el) => el.id), [elements])
   const measureKey = useMemo(
-    () => `${title}::${elements.map((el) => `${el.id}:${el.type}:${el.text}`).join('|')}`,
-    [elements, title],
+    () => elements.map((el) => `${el.id}:${el.type}:${el.text}`).join('|'),
+    [elements],
   )
 
-  // Ensure every element id appears in pagination structure
   useLayoutEffect(() => {
     setPageIdGroups((prev) => {
       const flat = prev.flat()
@@ -85,10 +84,6 @@ export function useScriptPagination(
   useLayoutEffect(() => {
     cancelAnimationFrame(rafRef.current)
     rafRef.current = requestAnimationFrame(() => {
-      const titleEl = document.querySelector('.script-title-input')
-      const titleHeight =
-        titleEl instanceof HTMLElement ? titleEl.offsetHeight + 36 : 64
-
       const heights = elementIds.map((id) => {
         const node = document.querySelector(`[data-element-id="${id}"]`)
         return node instanceof HTMLElement ? node.offsetHeight : 28
@@ -97,12 +92,7 @@ export function useScriptPagination(
       const sig = `${measureKey}::${heights.join(',')}`
       if (sig === lastSigRef.current) return
 
-      const next = packElementIds(
-        elementIds,
-        heights,
-        titleHeight,
-        PAGE_CONTENT_HEIGHT_PX,
-      )
+      const next = packElementIds(elementIds, heights, PAGE_CONTENT_HEIGHT_PX)
 
       setPageIdGroups((prev) => {
         if (samePages(prev, next)) {
@@ -119,17 +109,26 @@ export function useScriptPagination(
 
   const pages: PageSlice[] = useMemo(() => {
     const byId = new Map(elements.map((el) => [el.id, el]))
-    const mapped = pageIdGroups.map((ids, index) => ({
-      pageNumber: index + 1,
-      elements: ids
-        .map((id) => byId.get(id))
-        .filter((el): el is ScreenplayElement => Boolean(el)),
-    }))
+    const groups =
+      pageIdGroups.length > 0 ? pageIdGroups : [elements.map((el) => el.id)]
 
-    if (mapped.length === 0) {
-      return [{ pageNumber: 1, elements }]
-    }
-    return mapped
+    return groups.map((ids, index) => {
+      const nextIds = groups[index + 1] ?? []
+      const chrome = getPageBreakChrome(elements, ids, nextIds)
+      const prevChrome =
+        index > 0
+          ? getPageBreakChrome(elements, groups[index - 1] ?? [], ids)
+          : { showMore: false, continuedCharacter: null }
+
+      return {
+        pageNumber: index + 1,
+        elements: ids
+          .map((id) => byId.get(id))
+          .filter((el): el is ScreenplayElement => Boolean(el)),
+        showMore: chrome.showMore,
+        continuedCharacter: prevChrome.continuedCharacter,
+      }
+    })
   }, [elements, pageIdGroups])
 
   return {

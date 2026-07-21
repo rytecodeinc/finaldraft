@@ -137,6 +137,7 @@ export function InspectorPanel() {
           <div className="chip-row">
             <span className="chip">Feature film</span>
             <span className="chip">US Letter</span>
+            <span className="chip">SmartType</span>
           </div>
           <p
             style={{
@@ -146,8 +147,8 @@ export function InspectorPanel() {
               color: 'var(--text-muted)',
             }}
           >
-            Pages paginate automatically as the script grows. Title and scene
-            meta edits are undoable.
+            Title page, find (⌘/Ctrl+F), SmartType suggestions, and MORE/CONTINUED
+            page breaks are active on the Script page.
           </p>
         </section>
       </div>

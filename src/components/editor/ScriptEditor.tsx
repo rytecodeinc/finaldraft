@@ -1,8 +1,10 @@
-import { useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
 import { ElementTypeQuickBar } from '@/components/editor/ElementTypeQuickBar'
+import { FindBar } from '@/components/editor/FindBar'
 import { SceneNavigator } from '@/components/editor/SceneNavigator'
 import { ScriptElementLine } from '@/components/editor/ScriptElementLine'
-import { collectCharacterNames } from '@/screenplay/elementRules'
+import { TitlePage } from '@/components/editor/TitlePage'
+import { findInScript } from '@/screenplay/findScript'
 import { useScriptPagination } from '@/hooks/useScriptPagination'
 import { useScriptStore } from '@/stores/scriptStore'
 
@@ -10,24 +12,32 @@ export function ScriptEditor() {
   const hydrated = useScriptStore((s) => s.hydrated)
   const hydrate = useScriptStore((s) => s.hydrate)
   const elements = useScriptStore((s) => s.doc.elements)
-  const title = useScriptStore((s) => s.doc.title)
   const selectedId = useScriptStore((s) => s.selectedId)
   const focusRequestId = useScriptStore((s) => s.focusRequestId)
-  const setTitle = useScriptStore((s) => s.setTitle)
   const undo = useScriptStore((s) => s.undo)
   const redo = useScriptStore((s) => s.redo)
   const saveNow = useScriptStore((s) => s.saveNow)
   const setPageCount = useScriptStore((s) => s.setPageCount)
+  const openFind = useScriptStore((s) => s.openFind)
+  const findQuery = useScriptStore((s) => s.findQuery)
+  const findTypeFilter = useScriptStore((s) => s.findTypeFilter)
+  const findMatchIndex = useScriptStore((s) => s.findMatchIndex)
 
-  const { pages, pageCount } = useScriptPagination(elements, title)
-  const characters = collectCharacterNames(elements)
+  const { pages, pageCount } = useScriptPagination(elements)
+
+  const findMatches = useMemo(
+    () => findInScript(elements, findQuery, findTypeFilter),
+    [elements, findQuery, findTypeFilter],
+  )
+  const activeMatchId = findMatches[findMatchIndex]?.elementId ?? null
 
   useEffect(() => {
     if (!hydrated) void hydrate()
   }, [hydrate, hydrated])
 
   useEffect(() => {
-    setPageCount(pageCount)
+    // Body pages + title page
+    setPageCount(pageCount + 1)
   }, [pageCount, setPageCount])
 
   useEffect(() => {
@@ -35,6 +45,12 @@ export function ScriptEditor() {
       const mod = event.metaKey || event.ctrlKey
       if (!mod) return
       const key = event.key.toLowerCase()
+
+      if (key === 'f') {
+        event.preventDefault()
+        openFind()
+        return
+      }
 
       if (key === 's') {
         event.preventDefault()
@@ -62,7 +78,7 @@ export function ScriptEditor() {
 
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [redo, saveNow, undo])
+  }, [openFind, redo, saveNow, undo])
 
   if (!hydrated) {
     return (
@@ -76,45 +92,52 @@ export function ScriptEditor() {
     <div className="script-workspace">
       <SceneNavigator />
       <div className="script-canvas-shell">
+        <FindBar />
         <ElementTypeQuickBar />
         <div className="script-canvas">
-          {pages.map((page, pageIndex) => (
-            <section
-              key={`page-${page.pageNumber}`}
-              className="script-page script-page--live"
-              aria-label={`Page ${page.pageNumber}`}
-            >
-              <div className="script-page-body">
-                {pageIndex === 0 ? (
-                  <input
-                    className="script-title-input"
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    aria-label="Screenplay title"
-                    placeholder="Untitled Screenplay"
-                  />
-                ) : (
-                  <div className="script-page-continued" aria-hidden>
-                    {title || 'Untitled Screenplay'} — continued
+          <TitlePage />
+
+          {pages.map((page) => {
+            const first = page.elements[0]
+            const showContinuedOnCharacter =
+              Boolean(page.continuedCharacter) &&
+              first?.type === 'character' &&
+              first.text.replace(/\(.*?\)/g, '').trim().toUpperCase() ===
+                page.continuedCharacter
+
+            return (
+              <section
+                key={`page-${page.pageNumber}`}
+                className="script-page script-page--live"
+                aria-label={`Page ${page.pageNumber}`}
+              >
+                <div className="script-page-body">
+                  {page.continuedCharacter && !showContinuedOnCharacter ? (
+                    <div className="sp-continued-cue">
+                      {page.continuedCharacter} (CONT&apos;D)
+                    </div>
+                  ) : null}
+
+                  <div className="script-elements">
+                    {page.elements.map((element, index) => (
+                      <ScriptElementLine
+                        key={element.id}
+                        element={element}
+                        isSelected={selectedId === element.id}
+                        shouldFocus={focusRequestId === element.id}
+                        isFindMatch={activeMatchId === element.id}
+                        showContinued={index === 0 && showContinuedOnCharacter}
+                      />
+                    ))}
                   </div>
-                )}
 
-                <div className="script-elements">
-                  {page.elements.map((element) => (
-                    <ScriptElementLine
-                      key={element.id}
-                      element={element}
-                      isSelected={selectedId === element.id}
-                      shouldFocus={focusRequestId === element.id}
-                      characterNames={characters}
-                    />
-                  ))}
+                  {page.showMore ? <div className="sp-more-cue">(MORE)</div> : null}
                 </div>
-              </div>
 
-              <footer className="script-page-number">{page.pageNumber}.</footer>
-            </section>
-          ))}
+                <footer className="script-page-number">{page.pageNumber}.</footer>
+              </section>
+            )
+          })}
         </div>
       </div>
     </div>

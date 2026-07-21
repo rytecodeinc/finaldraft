@@ -11,6 +11,7 @@ import {
   formatElementText,
   parseSceneHeading,
 } from '@/screenplay/elementRules'
+import { findInScript, type FindMatch, type FindTypeFilter } from '@/screenplay/findScript'
 import { loadActiveScript, saveActiveScript } from '@/screenplay/idb'
 import { createSampleScript } from '@/screenplay/sampleScript'
 import type {
@@ -19,6 +20,7 @@ import type {
   SceneInfo,
   ScreenplayElement,
   ScriptDocument,
+  TitlePageInfo,
 } from '@/screenplay/types'
 
 const MAX_HISTORY = 80
@@ -26,6 +28,7 @@ const AUTOSAVE_MS = 700
 
 interface HistorySnapshot {
   title: string
+  titlePage: TitlePageInfo
   elements: ScreenplayElement[]
 }
 
@@ -45,6 +48,10 @@ interface ScriptState {
   pageCount: number
   undoStack: HistorySnapshot[]
   redoStack: HistorySnapshot[]
+  findOpen: boolean
+  findQuery: string
+  findTypeFilter: FindTypeFilter
+  findMatchIndex: number
   hydrate: () => Promise<void>
   selectElement: (id: string | null) => void
   requestFocus: (id: string) => void
@@ -62,6 +69,14 @@ interface ScriptState {
   redo: () => void
   saveNow: () => Promise<void>
   setTitle: (title: string) => void
+  updateTitlePage: (patch: Partial<TitlePageInfo>) => void
+  openFind: () => void
+  closeFind: () => void
+  setFindQuery: (query: string) => void
+  setFindTypeFilter: (filter: FindTypeFilter) => void
+  setFindMatchIndex: (index: number) => void
+  goToFindMatch: (index: number) => void
+  getFindMatches: () => FindMatch[]
   getScenes: () => SceneInfo[]
   getCharacters: () => string[]
   getPageEstimate: () => number
@@ -75,15 +90,24 @@ function cloneElements(elements: ScreenplayElement[]): ScreenplayElement[] {
   return elements.map((el) => ({ ...el }))
 }
 
+function cloneTitlePage(titlePage: TitlePageInfo): TitlePageInfo {
+  return { ...titlePage }
+}
+
 function snapshotDoc(doc: ScriptDocument): HistorySnapshot {
   return {
     title: doc.title,
+    titlePage: cloneTitlePage(doc.titlePage),
     elements: cloneElements(doc.elements),
   }
 }
 
 function snapshotsEqual(a: HistorySnapshot, b: HistorySnapshot): boolean {
-  return a.title === b.title && JSON.stringify(a.elements) === JSON.stringify(b.elements)
+  return (
+    a.title === b.title &&
+    JSON.stringify(a.titlePage) === JSON.stringify(b.titlePage) &&
+    JSON.stringify(a.elements) === JSON.stringify(b.elements)
+  )
 }
 
 function scheduleAutosave(get: () => ScriptState, set: (partial: Partial<ScriptState>) => void) {
@@ -94,7 +118,6 @@ function scheduleAutosave(get: () => ScriptState, set: (partial: Partial<ScriptS
   set({ dirty: true, saveStatus: 'dirty' })
 }
 
-/** Snapshot current doc before a mutation. Coalesces rapid typing into one undo step. */
 function pushHistory(get: () => ScriptState, set: (partial: Partial<ScriptState>) => void) {
   if (historyLocked) return
   historyLocked = true
@@ -123,6 +146,10 @@ export const useScriptStore = create<ScriptState>((set, get) => ({
   pageCount: 1,
   undoStack: [],
   redoStack: [],
+  findOpen: false,
+  findQuery: '',
+  findTypeFilter: 'all',
+  findMatchIndex: 0,
 
   hydrate: async () => {
     if (get().hydrated) return
@@ -301,6 +328,7 @@ export const useScriptStore = create<ScriptState>((set, get) => ({
       doc: {
         ...doc,
         title: previous.title,
+        titlePage: cloneTitlePage(previous.titlePage),
         elements: cloneElements(previous.elements),
         updatedAt: Date.now(),
       },
@@ -318,6 +346,7 @@ export const useScriptStore = create<ScriptState>((set, get) => ({
       doc: {
         ...doc,
         title: next.title,
+        titlePage: cloneTitlePage(next.titlePage),
         elements: cloneElements(next.elements),
         updatedAt: Date.now(),
       },
@@ -339,10 +368,53 @@ export const useScriptStore = create<ScriptState>((set, get) => ({
   setTitle: (title) => {
     pushHistory(get, set)
     set((state) => ({
-      doc: { ...state.doc, title, updatedAt: Date.now() },
+      doc: {
+        ...state.doc,
+        title,
+        titlePage: { ...state.doc.titlePage, title },
+        updatedAt: Date.now(),
+      },
     }))
     scheduleAutosave(get, set)
   },
+
+  updateTitlePage: (patch) => {
+    pushHistory(get, set)
+    set((state) => {
+      const titlePage = { ...state.doc.titlePage, ...patch }
+      return {
+        doc: {
+          ...state.doc,
+          title: titlePage.title,
+          titlePage,
+          updatedAt: Date.now(),
+        },
+      }
+    })
+    scheduleAutosave(get, set)
+  },
+
+  openFind: () => set({ findOpen: true }),
+  closeFind: () => set({ findOpen: false }),
+  setFindQuery: (findQuery) => set({ findQuery, findMatchIndex: 0 }),
+  setFindTypeFilter: (findTypeFilter) => set({ findTypeFilter, findMatchIndex: 0 }),
+  setFindMatchIndex: (findMatchIndex) => set({ findMatchIndex }),
+
+  goToFindMatch: (index) => {
+    const matches = get().getFindMatches()
+    if (matches.length === 0) return
+    const safe = ((index % matches.length) + matches.length) % matches.length
+    const match = matches[safe]!
+    set({ findMatchIndex: safe, selectedId: match.elementId, focusRequestId: match.elementId })
+    window.requestAnimationFrame(() => {
+      document
+        .querySelector(`[data-element-id="${match.elementId}"]`)
+        ?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    })
+  },
+
+  getFindMatches: () =>
+    findInScript(get().doc.elements, get().findQuery, get().findTypeFilter),
 
   getScenes: () => extractScenes(get().doc.elements),
   getCharacters: () => collectCharacterNames(get().doc.elements),

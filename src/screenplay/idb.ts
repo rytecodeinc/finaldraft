@@ -1,4 +1,4 @@
-import type { ScriptDocument } from './types'
+import { createDefaultTitlePage, type ScriptDocument, type TitlePageInfo } from './types'
 import { ACTIVE_SCRIPT_KEY, createSampleScript } from './sampleScript'
 
 const DB_NAME = 'scenedesk'
@@ -38,17 +38,38 @@ function withStore<T>(
   )
 }
 
+export function normalizeScriptDocument(
+  raw: Partial<ScriptDocument> & { elements?: ScriptDocument['elements'] },
+): ScriptDocument {
+  const sample = createSampleScript()
+  const title = raw.titlePage?.title || raw.title || sample.title
+  const titlePage: TitlePageInfo = {
+    ...createDefaultTitlePage(title),
+    ...(raw.titlePage ?? {}),
+    title,
+  }
+
+  return {
+    id: ACTIVE_SCRIPT_KEY,
+    title,
+    format: 'feature',
+    titlePage,
+    elements:
+      Array.isArray(raw.elements) && raw.elements.length > 0
+        ? raw.elements
+        : sample.elements,
+    createdAt: raw.createdAt ?? sample.createdAt,
+    updatedAt: raw.updatedAt ?? Date.now(),
+  }
+}
+
 export async function loadActiveScript(): Promise<ScriptDocument> {
   try {
     const existing = await withStore<ScriptDocument | undefined>('readonly', (store) =>
       store.get(ACTIVE_SCRIPT_KEY),
     )
     if (existing && Array.isArray(existing.elements) && existing.elements.length > 0) {
-      return {
-        ...existing,
-        id: ACTIVE_SCRIPT_KEY,
-        format: 'feature',
-      }
+      return normalizeScriptDocument(existing)
     }
   } catch {
     // Fall through to sample script
@@ -65,11 +86,9 @@ export async function loadActiveScript(): Promise<ScriptDocument> {
 }
 
 export async function saveActiveScript(doc: ScriptDocument): Promise<void> {
-  const payload: ScriptDocument = {
+  const payload = normalizeScriptDocument({
     ...doc,
-    id: ACTIVE_SCRIPT_KEY,
-    format: 'feature',
     updatedAt: Date.now(),
-  }
+  })
   await withStore('readwrite', (store) => store.put(payload))
 }

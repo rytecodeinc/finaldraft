@@ -4,6 +4,7 @@ import {
   PanelRight,
   Redo2,
   Save,
+  Search,
   Undo2,
 } from 'lucide-react'
 import { useLocation, useNavigate } from 'react-router-dom'
@@ -31,6 +32,8 @@ export function Toolbar() {
   const undo = useScriptStore((s) => s.undo)
   const redo = useScriptStore((s) => s.redo)
   const addScene = useScriptStore((s) => s.addScene)
+  const openFind = useScriptStore((s) => s.openFind)
+  const findOpen = useScriptStore((s) => s.findOpen)
   const canUndo = useScriptStore((s) => s.undoStack.length > 0)
   const canRedo = useScriptStore((s) => s.redoStack.length > 0)
 
@@ -82,6 +85,15 @@ export function Toolbar() {
       <div className="menubar-spacer" />
 
       <div className="toolbar-group">
+        {onScript ? (
+          <IconButton
+            label="Find in script (⌘/Ctrl+F)"
+            active={findOpen}
+            onClick={openFind}
+          >
+            <Search size={16} strokeWidth={1.75} />
+          </IconButton>
+        ) : null}
         <IconButton
           label="Toggle bottom panel"
           active={bottomPanelOpen}
