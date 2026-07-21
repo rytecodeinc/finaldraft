@@ -56,9 +56,13 @@ export function Toolbar() {
         ? 'Saved'
         : 'Save script'
 
-  const toolbarLabel = projectRoute
-    ? `${projectName} > ${current?.label ?? 'Story'}`
-    : (current?.label ?? 'SceneDesk')
+  const toolbarLabel = (() => {
+    if (!projectRoute) return current?.label ?? 'SceneDesk'
+    if (projectRoute.view === 'characters' && projectRoute.detail) {
+      return `${projectName} > Characters > ${projectRoute.detail}`
+    }
+    return `${projectName} > ${current?.label ?? 'Story'}`
+  })()
 
   return (
     <div className="toolbar" role="toolbar" aria-label="Editor toolbar">

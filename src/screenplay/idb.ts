@@ -6,6 +6,8 @@ import {
 } from './sampleScript'
 import {
   createDefaultTitlePage,
+  createEmptyCharacterProfile,
+  type CharacterProfile,
   type Project,
   type ScriptDocument,
   type TitlePageInfo,
@@ -125,6 +127,40 @@ export function normalizeScriptDocument(
       ? raw.id
       : createId('script')
 
+  const characterProfiles: CharacterProfile[] = Array.isArray(
+    raw.characterProfiles,
+  )
+    ? raw.characterProfiles
+        .filter(
+          (profile): profile is CharacterProfile =>
+            typeof profile?.name === 'string' &&
+            profile.name.trim().length > 0,
+        )
+        .map((profile) => ({
+          ...createEmptyCharacterProfile(profile.name),
+          aliases: typeof profile.aliases === 'string' ? profile.aliases : '',
+          role: typeof profile.role === 'string' ? profile.role : '',
+          ageRange: typeof profile.ageRange === 'string' ? profile.ageRange : '',
+          gender: typeof profile.gender === 'string' ? profile.gender : '',
+          castingNotes:
+            typeof profile.castingNotes === 'string' ? profile.castingNotes : '',
+          wardrobeNotes:
+            typeof profile.wardrobeNotes === 'string'
+              ? profile.wardrobeNotes
+              : '',
+          relationshipNotes:
+            typeof profile.relationshipNotes === 'string'
+              ? profile.relationshipNotes
+              : '',
+          arcNotes: typeof profile.arcNotes === 'string' ? profile.arcNotes : '',
+          notes: typeof profile.notes === 'string' ? profile.notes : '',
+          productionNotes:
+            typeof profile.productionNotes === 'string'
+              ? profile.productionNotes
+              : '',
+        }))
+    : []
+
   return {
     id,
     projectId,
@@ -159,6 +195,7 @@ export function normalizeScriptDocument(
           })
           .filter((comment) => elementIds.has(comment.elementId))
       : [],
+    characterProfiles,
     createdAt: raw.createdAt ?? Date.now(),
     updatedAt: raw.updatedAt ?? Date.now(),
   }

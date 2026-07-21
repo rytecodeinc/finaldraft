@@ -48,6 +48,41 @@ export interface TitlePageInfo {
   revision: string
 }
 
+/**
+ * Writer-owned character dossier fields. Script-derived stats (cues, scenes,
+ * dialogue counts, etc.) are computed from elements and not stored here.
+ * Keyed by canonical uppercase cue name.
+ */
+export interface CharacterProfile {
+  name: string
+  aliases: string
+  role: string
+  ageRange: string
+  gender: string
+  castingNotes: string
+  wardrobeNotes: string
+  relationshipNotes: string
+  arcNotes: string
+  notes: string
+  productionNotes: string
+}
+
+export function createEmptyCharacterProfile(name: string): CharacterProfile {
+  return {
+    name: name.trim().toUpperCase(),
+    aliases: '',
+    role: '',
+    ageRange: '',
+    gender: '',
+    castingNotes: '',
+    wardrobeNotes: '',
+    relationshipNotes: '',
+    arcNotes: '',
+    notes: '',
+    productionNotes: '',
+  }
+}
+
 export interface ScriptDocument {
   id: string
   /** Owning project — script is the source of truth for story data. */
@@ -57,6 +92,8 @@ export interface ScriptDocument {
   titlePage: TitlePageInfo
   elements: ScreenplayElement[]
   comments: ElementComment[]
+  /** Optional dossiers for characters that appear in the script. */
+  characterProfiles: CharacterProfile[]
   createdAt: number
   updatedAt: number
 }

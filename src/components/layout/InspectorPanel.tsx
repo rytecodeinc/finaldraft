@@ -18,6 +18,7 @@ import {
 import {
   parseProjectPath,
   projectPath,
+  characterPath,
   type StoryView,
 } from '@/navigation/navItems'
 import { useLayoutStore } from '@/stores/layoutStore'
@@ -180,15 +181,17 @@ function ScriptInspector() {
 
 function CharacterInspector() {
   const navigate = useNavigate()
+  const location = useLocation()
   const projectId = useScriptStore((s) => s.project.id)
   const elements = useScriptStore((s) => s.doc.elements)
   const directorySelection = useScriptStore((s) => s.directorySelection)
   const renameCharacter = useScriptStore((s) => s.renameCharacter)
-  const selectElement = useScriptStore((s) => s.selectElement)
-  const requestFocus = useScriptStore((s) => s.requestFocus)
+  const revealElement = useScriptStore((s) => s.revealElement)
 
+  const routeDetail = parseProjectPath(location.pathname)?.detail ?? null
   const name =
-    directorySelection?.kind === 'character' ? directorySelection.name : null
+    routeDetail ??
+    (directorySelection?.kind === 'character' ? directorySelection.name : null)
 
   const [draft, setDraft] = useState(name ?? '')
   useEffect(() => {
@@ -209,6 +212,11 @@ function CharacterInspector() {
     )
   }
 
+  const openInScript = (elementId: string) => {
+    revealElement(elementId)
+    navigate(projectPath(projectId, 'script'))
+  }
+
   return (
     <>
       <section className="inspector-section">
@@ -222,8 +230,12 @@ function CharacterInspector() {
             onChange={(e) => setDraft(e.target.value.toUpperCase())}
             onBlur={() => {
               const next = draft.trim().toUpperCase()
-              if (next && next !== name) renameCharacter(name, next)
-              else setDraft(name)
+              if (next && next !== name) {
+                renameCharacter(name, next)
+                if (routeDetail) {
+                  navigate(characterPath(projectId, next), { replace: true })
+                }
+              } else setDraft(name)
             }}
             onKeyDown={(e) => {
               if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
@@ -237,6 +249,10 @@ function CharacterInspector() {
           </span>
         </div>
         <div className="inspector-row">
+          <span>Dialogue</span>
+          <span>{appearance.dialogueCount}</span>
+        </div>
+        <div className="inspector-row">
           <span>Scenes</span>
           <span>{appearance.scenes.length}</span>
         </div>
@@ -246,9 +262,7 @@ function CharacterInspector() {
           disabled={!appearance.firstCueId}
           onClick={() => {
             if (!appearance.firstCueId) return
-            selectElement(appearance.firstCueId)
-            requestFocus(appearance.firstCueId)
-            navigate(projectPath(projectId, 'script'))
+            openInScript(appearance.firstCueId)
           }}
         >
           Open first cue in script
@@ -266,11 +280,7 @@ function CharacterInspector() {
                 <button
                   type="button"
                   className="inspector-scene-btn"
-                  onClick={() => {
-                    selectElement(scene.id)
-                    requestFocus(scene.id)
-                    navigate(projectPath(projectId, 'script'))
-                  }}
+                  onClick={() => openInScript(scene.id)}
                 >
                   <span className="inspector-scene-num">{scene.number}</span>
                   <span className="inspector-scene-heading">{scene.heading}</span>
@@ -290,8 +300,7 @@ function LocationInspector() {
   const elements = useScriptStore((s) => s.doc.elements)
   const directorySelection = useScriptStore((s) => s.directorySelection)
   const renameLocation = useScriptStore((s) => s.renameLocation)
-  const selectElement = useScriptStore((s) => s.selectElement)
-  const requestFocus = useScriptStore((s) => s.requestFocus)
+  const revealElement = useScriptStore((s) => s.revealElement)
 
   const name =
     directorySelection?.kind === 'location' ? directorySelection.name : null
@@ -354,8 +363,7 @@ function LocationInspector() {
                   type="button"
                   className="inspector-scene-btn"
                   onClick={() => {
-                    selectElement(scene.id)
-                    requestFocus(scene.id)
+                    revealElement(scene.id)
                     navigate(projectPath(projectId, 'script'))
                   }}
                 >
@@ -377,8 +385,7 @@ function OutlineInspector() {
   const elements = useScriptStore((s) => s.doc.elements)
   const directorySelection = useScriptStore((s) => s.directorySelection)
   const getScenes = useScriptStore((s) => s.getScenes)
-  const selectElement = useScriptStore((s) => s.selectElement)
-  const requestFocus = useScriptStore((s) => s.requestFocus)
+  const revealElement = useScriptStore((s) => s.revealElement)
 
   const scenes = useMemo(() => getScenes(), [getScenes, elements])
   const sceneId =
@@ -406,8 +413,7 @@ function OutlineInspector() {
           type="button"
           className="inspector-action"
           onClick={() => {
-            selectElement(scene.id)
-            requestFocus(scene.id)
+            revealElement(scene.id)
             navigate(projectPath(projectId, 'script'))
           }}
         >

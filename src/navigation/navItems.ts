@@ -136,16 +136,38 @@ export function projectPath(projectId: string, view: StoryView): string {
   return `/p/${projectId}/${view}`
 }
 
-export function parseProjectPath(
-  pathname: string,
-): { projectId: string; view: StoryView } | null {
+/** Character detail under Characters. Name is URL-encoded uppercase cue name. */
+export function characterPath(projectId: string, name: string): string {
+  return `${projectPath(projectId, 'characters')}/${encodeURIComponent(
+    name.trim().toUpperCase(),
+  )}`
+}
+
+export function parseProjectPath(pathname: string): {
+  projectId: string
+  view: StoryView
+  /** Detail slug for nested story routes (e.g. character name). */
+  detail?: string
+} | null {
   const match = pathname.match(
-    /^\/p\/([^/]+)\/(script|outline|characters|locations|notes)\/?$/,
+    /^\/p\/([^/]+)\/(script|outline|characters|locations|notes)(?:\/([^/?#]+))?\/?$/,
   )
   if (!match) return null
+  const view = match[2] as StoryView
+  const rawDetail = match[3]
+  let detail: string | undefined
+  if (rawDetail && view === 'characters') {
+    try {
+      detail = decodeURIComponent(rawDetail).trim().toUpperCase()
+    } catch {
+      detail = rawDetail.trim().toUpperCase()
+    }
+    if (!detail) detail = undefined
+  }
   return {
     projectId: match[1]!,
-    view: match[2] as StoryView,
+    view,
+    detail,
   }
 }
 

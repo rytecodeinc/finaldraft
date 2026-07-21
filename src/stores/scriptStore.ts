@@ -26,6 +26,7 @@ import {
 } from '@/screenplay/idb'
 import { createUntitledProject } from '@/screenplay/sampleScript'
 import type {
+  CharacterProfile,
   ElementComment,
   ElementType,
   Project,
@@ -35,6 +36,7 @@ import type {
   ScriptDocument,
   TitlePageInfo,
 } from '@/screenplay/types'
+import { createEmptyCharacterProfile } from '@/screenplay/types'
 
 const MAX_HISTORY = 80
 const AUTOSAVE_MS = 700
@@ -82,6 +84,8 @@ interface ScriptState {
   directorySelection: DirectorySelection | null
   focusRequestId: string | null
   focusCaret: CaretPosition | null
+  /** After navigating to script, scroll this element into view (retried until mounted). */
+  scrollRequestId: string | null
   saveStatus: SaveStatus
   hydrated: boolean
   dirty: boolean
@@ -103,10 +107,18 @@ interface ScriptState {
   renameScene: (sceneId: string, heading: string) => void
   renameCharacter: (fromName: string, toName: string) => void
   renameLocation: (fromLocation: string, toLocation: string) => void
+  updateCharacterProfile: (
+    name: string,
+    patch: Partial<Omit<CharacterProfile, 'name'>>,
+  ) => void
+  ensureCharacterProfile: (name: string) => CharacterProfile
   selectElement: (id: string | null) => void
   selectDirectory: (selection: DirectorySelection | null) => void
   requestFocus: (id: string, caret?: CaretPosition | null) => void
+  /** Focus + scroll into view once the script editor mounts the element. */
+  revealElement: (id: string, caret?: CaretPosition | null) => void
   clearFocusRequest: () => void
+  clearScrollRequest: () => void
   rememberCaret: (id: string, caret: CaretPosition) => void
   pruneBlankElements: (keepId?: string | null) => void
   updateElementText: (id: string, text: string) => void
@@ -289,6 +301,7 @@ export const useScriptStore = create<ScriptState>((set, get) => {
   directorySelection: null,
   focusRequestId: null,
   focusCaret: null,
+  scrollRequestId: null,
   saveStatus: 'idle',
   hydrated: false,
   dirty: false,
@@ -346,8 +359,10 @@ export const useScriptStore = create<ScriptState>((set, get) => {
       projects,
       doc: script,
       selectedId: null,
+      directorySelection: null,
       focusRequestId: null,
       focusCaret: null,
+      scrollRequestId: null,
       dirty: false,
       saveStatus: 'saved',
       undoStack: [],
@@ -392,20 +407,79 @@ export const useScriptStore = create<ScriptState>((set, get) => {
     const changed = next.some((el, i) => el.text !== get().doc.elements[i]?.text)
     if (!changed) return
     pushHistory(get, set)
+    const normalizedFrom = fromName.replace(/\(.*?\)/g, '').trim().toUpperCase()
     const normalizedTo = toName.replace(/\(.*?\)/g, '').trim().toUpperCase()
     const dir = get().directorySelection
+    set((state) => {
+      const profiles = state.doc.characterProfiles ?? []
+      const renamedProfiles = profiles.map((profile) =>
+        profile.name === normalizedFrom
+          ? { ...profile, name: normalizedTo }
+          : profile,
+      )
+      // Avoid duplicate keys if a profile for the target already exists.
+      const seen = new Set<string>()
+      const characterProfiles = renamedProfiles.filter((profile) => {
+        if (seen.has(profile.name)) return false
+        seen.add(profile.name)
+        return true
+      })
+      return {
+        doc: {
+          ...state.doc,
+          elements: next,
+          characterProfiles,
+          updatedAt: Date.now(),
+        },
+        directorySelection:
+          dir?.kind === 'character' && dir.name === normalizedFrom
+            ? { kind: 'character', name: normalizedTo }
+            : state.directorySelection,
+      }
+    })
+    scheduleAutosave(get, set)
+  },
+
+  ensureCharacterProfile: (name) => {
+    const upper = name.trim().toUpperCase()
+    const existing = get().doc.characterProfiles.find((p) => p.name === upper)
+    if (existing) return existing
+    const profile = createEmptyCharacterProfile(upper)
     set((state) => ({
       doc: {
         ...state.doc,
-        elements: next,
+        characterProfiles: [...state.doc.characterProfiles, profile],
         updatedAt: Date.now(),
       },
-      directorySelection:
-        dir?.kind === 'character' &&
-        dir.name === fromName.replace(/\(.*?\)/g, '').trim().toUpperCase()
-          ? { kind: 'character', name: normalizedTo }
-          : state.directorySelection,
     }))
+    scheduleAutosave(get, set)
+    return profile
+  },
+
+  updateCharacterProfile: (name, patch) => {
+    const upper = name.trim().toUpperCase()
+    set((state) => {
+      const profiles = state.doc.characterProfiles ?? []
+      const index = profiles.findIndex((p) => p.name === upper)
+      const base =
+        index >= 0 ? profiles[index]! : createEmptyCharacterProfile(upper)
+      const nextProfile: CharacterProfile = {
+        ...base,
+        ...patch,
+        name: upper,
+      }
+      const characterProfiles =
+        index >= 0
+          ? profiles.map((p, i) => (i === index ? nextProfile : p))
+          : [...profiles, nextProfile]
+      return {
+        doc: {
+          ...state.doc,
+          characterProfiles,
+          updatedAt: Date.now(),
+        },
+      }
+    })
     scheduleAutosave(get, set)
   },
 
@@ -459,7 +533,18 @@ export const useScriptStore = create<ScriptState>((set, get) => {
   requestFocus: (id, caret = null) =>
     set({ selectedId: id, focusRequestId: id, focusCaret: caret }),
 
+  revealElement: (id, caret = null) =>
+    set({
+      selectedId: id,
+      focusRequestId: id,
+      focusCaret: caret,
+      scrollRequestId: id,
+      directorySelection: null,
+    }),
+
   clearFocusRequest: () => set({ focusRequestId: null }),
+
+  clearScrollRequest: () => set({ scrollRequestId: null }),
 
   rememberCaret: (id, caret) => {
     if (get().selectedId !== id) return

@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Pencil } from 'lucide-react'
-import { projectPath } from '@/navigation/navItems'
+import { characterPath } from '@/navigation/navItems'
 import { characterCueBaseName } from '@/screenplay/elementRules'
 import { useScriptStore } from '@/stores/scriptStore'
 
@@ -12,10 +12,6 @@ export function CharactersPage() {
   const elements = useScriptStore((s) => s.doc.elements)
   const getCharacters = useScriptStore((s) => s.getCharacters)
   const renameCharacter = useScriptStore((s) => s.renameCharacter)
-  const selectDirectory = useScriptStore((s) => s.selectDirectory)
-  const directorySelection = useScriptStore((s) => s.directorySelection)
-  const selectElement = useScriptStore((s) => s.selectElement)
-  const requestFocus = useScriptStore((s) => s.requestFocus)
 
   const characters = useMemo(() => getCharacters(), [getCharacters, elements])
   const [editingName, setEditingName] = useState<string | null>(null)
@@ -27,16 +23,6 @@ export function CharactersPage() {
       (el) =>
         el.type === 'character' && characterCueBaseName(el.text) === upper,
     ).length
-  }
-
-  const firstCueId = (name: string) => {
-    const upper = name.toUpperCase()
-    return (
-      elements.find(
-        (el) =>
-          el.type === 'character' && characterCueBaseName(el.text) === upper,
-      )?.id ?? null
-    )
   }
 
   const commitRename = (from: string) => {
@@ -53,8 +39,8 @@ export function CharactersPage() {
           <p className="page-kicker">{projectName}</p>
           <h1 className="page-title">Characters</h1>
           <p className="page-desc">
-            Derived from character cues. Select a character to inspect; rename
-            here or in the inspector to update the script.
+            Derived from character cues. Open a character for stats, notes, and
+            production info.
           </p>
         </header>
 
@@ -64,15 +50,9 @@ export function CharactersPage() {
           <ul className="derived-list">
             {characters.map((name) => {
               const editing = editingName === name
-              const selected =
-                directorySelection?.kind === 'character' &&
-                directorySelection.name === name
               const count = cueCount(name)
               return (
-                <li
-                  key={name}
-                  className={`derived-row ${selected ? 'is-selected' : ''}`.trim()}
-                >
+                <li key={name} className="derived-row">
                   <span className="derived-avatar" aria-hidden>
                     {name.charAt(0)}
                   </span>
@@ -97,17 +77,8 @@ export function CharactersPage() {
                       <button
                         type="button"
                         className="derived-title-btn"
-                        onClick={() =>
-                          selectDirectory({ kind: 'character', name })
-                        }
-                        onDoubleClick={() => {
-                          const id = firstCueId(name)
-                          if (!id) return
-                          selectElement(id)
-                          requestFocus(id)
-                          navigate(projectPath(projectId, 'script'))
-                        }}
-                        title="Select to inspect · double-click to open in script"
+                        onClick={() => navigate(characterPath(projectId, name))}
+                        title="Open character detail"
                       >
                         {name}
                       </button>
@@ -123,8 +94,8 @@ export function CharactersPage() {
                         className="derived-icon-btn"
                         aria-label={`Rename ${name}`}
                         title="Rename character"
-                        onClick={() => {
-                          selectDirectory({ kind: 'character', name })
+                        onClick={(e) => {
+                          e.stopPropagation()
                           setEditingName(name)
                           setDraft(name)
                         }}

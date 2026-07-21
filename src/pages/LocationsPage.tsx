@@ -14,8 +14,7 @@ export function LocationsPage() {
   const renameLocation = useScriptStore((s) => s.renameLocation)
   const selectDirectory = useScriptStore((s) => s.selectDirectory)
   const directorySelection = useScriptStore((s) => s.directorySelection)
-  const selectElement = useScriptStore((s) => s.selectElement)
-  const requestFocus = useScriptStore((s) => s.requestFocus)
+  const revealElement = useScriptStore((s) => s.revealElement)
 
   const locations = useMemo(() => getLocations(), [getLocations, elements])
   const scenes = useMemo(() => getScenes(), [getScenes, elements])
@@ -96,8 +95,7 @@ export function LocationsPage() {
                         onDoubleClick={() => {
                           const id = firstSceneId(name)
                           if (!id) return
-                          selectElement(id)
-                          requestFocus(id)
+                          revealElement(id)
                           navigate(projectPath(projectId, 'script'))
                         }}
                         title="Select to inspect · double-click to open in script"

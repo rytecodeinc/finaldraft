@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 import { AppShell } from '@/components/layout/AppShell'
 import { ProjectRouteGate } from '@/components/project/ProjectRouteGate'
 import { BeatBoardPage } from '@/pages/BeatBoardPage'
+import { CharacterDetailPage } from '@/pages/CharacterDetailPage'
 import { CharactersPage } from '@/pages/CharactersPage'
 import { DashboardPage } from '@/pages/DashboardPage'
 import { LocationsPage } from '@/pages/LocationsPage'
@@ -37,6 +38,10 @@ export function AppRouter() {
           <Route path="script" element={<ScriptPage />} />
           <Route path="outline" element={<OutlinePage />} />
           <Route path="characters" element={<CharactersPage />} />
+          <Route
+            path="characters/:characterName"
+            element={<CharacterDetailPage />}
+          />
           <Route path="locations" element={<LocationsPage />} />
           <Route path="notes" element={<NotesPage />} />
         </Route>

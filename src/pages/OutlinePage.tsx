@@ -14,8 +14,7 @@ export function OutlinePage() {
   const renameScene = useScriptStore((s) => s.renameScene)
   const selectDirectory = useScriptStore((s) => s.selectDirectory)
   const directorySelection = useScriptStore((s) => s.directorySelection)
-  const selectElement = useScriptStore((s) => s.selectElement)
-  const requestFocus = useScriptStore((s) => s.requestFocus)
+  const revealElement = useScriptStore((s) => s.revealElement)
 
   const scenes = useMemo(() => getScenes(), [getScenes, elements])
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -79,8 +78,7 @@ export function OutlinePage() {
                           selectDirectory({ kind: 'scene', sceneId: scene.id })
                         }
                         onDoubleClick={() => {
-                          selectElement(scene.id)
-                          requestFocus(scene.id)
+                          revealElement(scene.id)
                           navigate(projectPath(projectId, 'script'))
                         }}
                         title="Select to inspect · double-click to open in script"

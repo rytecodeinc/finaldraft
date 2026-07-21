@@ -235,7 +235,46 @@ export interface CharacterAppearance {
   name: string
   cueCount: number
   firstCueId: string | null
+  lastCueId: string | null
   scenes: SceneInfo[]
+  /** Dialogue lines spoken after this character's cues. */
+  dialogueCount: number
+  /** Word count across those dialogue lines. */
+  wordCount: number
+  /** Rough speaking time from word count (~150 wpm). */
+  estimatedSpeakingSeconds: number
+  firstScene: SceneInfo | null
+  lastScene: SceneInfo | null
+  locations: string[]
+  /** Other characters who share at least one scene. */
+  coAppearances: { name: string; sharedScenes: number }[]
+}
+
+function countWords(text: string): number {
+  const trimmed = text.trim()
+  if (!trimmed) return 0
+  return trimmed.split(/\s+/).length
+}
+
+/**
+ * Collect dialogue belonging to a character cue: following parentheticals
+ * are skipped; consecutive dialogue lines until another non-dialogue type.
+ */
+function dialogueAfterCue(
+  elements: ScreenplayElement[],
+  cueIndex: number,
+): string[] {
+  const lines: string[] = []
+  for (let i = cueIndex + 1; i < elements.length; i++) {
+    const el = elements[i]!
+    if (el.type === 'parenthetical') continue
+    if (el.type === 'dialogue') {
+      lines.push(el.text)
+      continue
+    }
+    break
+  }
+  return lines
 }
 
 export function getCharacterAppearance(
@@ -243,22 +282,74 @@ export function getCharacterAppearance(
   name: string,
 ): CharacterAppearance {
   const upper = name.trim().toUpperCase()
-  const cueIds: string[] = []
+  const cueIndexes: number[] = []
   const sceneById = new Map<string, SceneInfo>()
+  const dialogueLines: string[] = []
 
-  elements.forEach((el) => {
+  elements.forEach((el, index) => {
     if (el.type !== 'character') return
     if (characterCueBaseName(el.text) !== upper) return
-    cueIds.push(el.id)
+    cueIndexes.push(index)
     const scene = findSceneForElement(elements, el.id)
     if (scene) sceneById.set(scene.id, scene)
+    dialogueLines.push(...dialogueAfterCue(elements, index))
   })
+
+  const scenes = [...sceneById.values()].sort((a, b) => a.number - b.number)
+  const wordCount = dialogueLines.reduce(
+    (sum, line) => sum + countWords(line),
+    0,
+  )
+  const locations = [
+    ...new Set(
+      scenes
+        .map((scene) => scene.location?.toUpperCase())
+        .filter((loc): loc is string => Boolean(loc)),
+    ),
+  ].sort()
+
+  const sceneIds = new Set(scenes.map((s) => s.id))
+  const coMap = new Map<string, Set<string>>()
+  for (const el of elements) {
+    if (el.type !== 'character') continue
+    const other = characterCueBaseName(el.text)
+    if (!other || other === upper) continue
+    const scene = findSceneForElement(elements, el.id)
+    if (!scene || !sceneIds.has(scene.id)) continue
+    let set = coMap.get(other)
+    if (!set) {
+      set = new Set()
+      coMap.set(other, set)
+    }
+    set.add(scene.id)
+  }
+  const coAppearances = [...coMap.entries()]
+    .map(([n, shared]) => ({ name: n, sharedScenes: shared.size }))
+    .sort(
+      (a, b) =>
+        b.sharedScenes - a.sharedScenes || a.name.localeCompare(b.name),
+    )
+
+  const firstIndex = cueIndexes[0]
+  const lastIndex = cueIndexes[cueIndexes.length - 1]
+  const firstCueId =
+    firstIndex == null ? null : (elements[firstIndex]?.id ?? null)
+  const lastCueId =
+    lastIndex == null ? null : (elements[lastIndex]?.id ?? null)
 
   return {
     name: upper,
-    cueCount: cueIds.length,
-    firstCueId: cueIds[0] ?? null,
-    scenes: [...sceneById.values()].sort((a, b) => a.number - b.number),
+    cueCount: cueIndexes.length,
+    firstCueId,
+    lastCueId,
+    scenes,
+    dialogueCount: dialogueLines.length,
+    wordCount,
+    estimatedSpeakingSeconds: Math.round((wordCount / 150) * 60),
+    firstScene: scenes[0] ?? null,
+    lastScene: scenes[scenes.length - 1] ?? null,
+    locations,
+    coAppearances,
   }
 }
 

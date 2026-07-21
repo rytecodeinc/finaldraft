@@ -19,6 +19,8 @@ export function ScriptEditor() {
   const selectedId = useScriptStore((s) => s.selectedId)
   const focusRequestId = useScriptStore((s) => s.focusRequestId)
   const focusCaret = useScriptStore((s) => s.focusCaret)
+  const scrollRequestId = useScriptStore((s) => s.scrollRequestId)
+  const clearScrollRequest = useScriptStore((s) => s.clearScrollRequest)
   const selectElement = useScriptStore((s) => s.selectElement)
   const requestFocus = useScriptStore((s) => s.requestFocus)
   const undo = useScriptStore((s) => s.undo)
@@ -108,6 +110,38 @@ export function ScriptEditor() {
     // Body pages + title page
     setPageCount(pageCount + 1)
   }, [pageCount, setPageCount])
+
+  // Reveal an element after cross-route navigation (e.g. character → scene).
+  useEffect(() => {
+    if (!scrollRequestId || !hydrated) return
+    let cancelled = false
+    let attempts = 0
+    const maxAttempts = 60
+
+    const tryReveal = () => {
+      if (cancelled) return
+      const node = document.querySelector(
+        `[data-element-id="${scrollRequestId}"]`,
+      )
+      if (node instanceof HTMLElement) {
+        node.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        clearScrollRequest()
+        return
+      }
+      attempts += 1
+      if (attempts < maxAttempts) {
+        window.setTimeout(tryReveal, 50)
+      } else {
+        clearScrollRequest()
+      }
+    }
+
+    const timer = window.setTimeout(tryReveal, 0)
+    return () => {
+      cancelled = true
+      window.clearTimeout(timer)
+    }
+  }, [scrollRequestId, hydrated, clearScrollRequest, pageSig])
 
   // Track whether the title page or a script body page is in view.
   useEffect(() => {

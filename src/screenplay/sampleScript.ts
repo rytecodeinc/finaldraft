@@ -27,6 +27,7 @@ export function createSampleScript(projectId: string, scriptId?: string): Script
     createdAt: now,
     updatedAt: now,
     comments: [],
+    characterProfiles: [],
     elements: [
       createElement('sceneHeading', "INT. WRITER'S STUDY - NIGHT"),
       createElement(
