@@ -161,7 +161,7 @@ export function ScriptCommentsRail() {
                   .querySelector(`[data-element-id="${comment.elementId}"]`)
                   ?.scrollIntoView({ behavior: 'smooth', block: 'center' })
               }}
-              onDelete={() => deleteComment(comment.id)}
+              onResolve={() => deleteComment(comment.id)}
             />
           </div>
         )

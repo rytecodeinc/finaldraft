@@ -1,10 +1,30 @@
 import { useEffect, useRef } from 'react'
+import { Check } from 'lucide-react'
 import type { ElementComment } from '@/screenplay/types'
 
 function authorInitial(name: string): string {
   const trimmed = name.trim()
   if (!trimmed) return 'Y'
   return trimmed.charAt(0).toUpperCase()
+}
+
+function formatCommentTime(timestamp: number): string {
+  const date = new Date(timestamp)
+  const time = date.toLocaleTimeString('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+  })
+
+  const now = new Date()
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const startOfThatDay = new Date(date.getFullYear(), date.getMonth(), date.getDate())
+  const dayDiff = Math.round(
+    (startOfToday.getTime() - startOfThatDay.getTime()) / (24 * 60 * 60 * 1000),
+  )
+
+  if (dayDiff === 0) return `${time} Today`
+  if (dayDiff === 1) return `${time} Yesterday`
+  return `${time} ${date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
 }
 
 interface CommentComposeCardProps {
@@ -39,7 +59,9 @@ export function CommentComposeCard({
         <span className="script-comment-avatar" aria-hidden>
           {authorInitial(author)}
         </span>
-        <span className="script-comment-author">{author}</span>
+        <div className="script-comment-meta">
+          <span className="script-comment-author">{author}</span>
+        </div>
       </div>
 
       <input
@@ -82,14 +104,14 @@ interface CommentThreadCardProps {
   comment: ElementComment
   isActive: boolean
   onActivate: () => void
-  onDelete: () => void
+  onResolve: () => void
 }
 
 export function CommentThreadCard({
   comment,
   isActive,
   onActivate,
-  onDelete,
+  onResolve,
 }: CommentThreadCardProps) {
   return (
     <div
@@ -108,18 +130,23 @@ export function CommentThreadCard({
         <span className="script-comment-avatar" aria-hidden>
           {authorInitial(comment.author)}
         </span>
-        <span className="script-comment-author">{comment.author}</span>
+        <div className="script-comment-meta">
+          <span className="script-comment-author">{comment.author}</span>
+          <span className="script-comment-time">
+            {formatCommentTime(comment.createdAt)}
+          </span>
+        </div>
         <button
           type="button"
-          className="script-comment-delete"
-          title="Delete comment"
-          aria-label="Delete comment"
+          className="script-comment-resolve"
+          title="Resolve comment"
+          aria-label="Resolve comment"
           onClick={(e) => {
             e.stopPropagation()
-            onDelete()
+            onResolve()
           }}
         >
-          ×
+          <Check size={16} strokeWidth={2.25} />
         </button>
       </div>
       <p className="script-comment-body">{comment.text}</p>

@@ -806,7 +806,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 28px 24px 48px;
+  padding: 28px 52px 48px 24px;
   overflow: auto;
   background:
     radial-gradient(800px 300px at 50% 0%, rgba(232, 168, 56, 0.05), transparent 60%),
@@ -835,18 +835,19 @@
 }
 
 .quick-actions {
-  position: sticky;
+  position: absolute;
   top: 12px;
+  right: 0;
   z-index: 12;
-  flex-shrink: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 4px;
   padding: 8px 5px;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-md) 0 0 var(--radius-md);
   background: color-mix(in srgb, var(--bg-elevated) 94%, transparent);
   border: 1px solid var(--border-default);
+  border-right: none;
   box-shadow: var(--shadow-md);
   backdrop-filter: blur(10px);
   animation: page-enter var(--duration-normal) var(--ease-out) both;
@@ -945,7 +946,7 @@
 
 .script-comment-header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 10px;
   min-width: 0;
 }
@@ -964,9 +965,16 @@
   font-family: var(--font-ui);
 }
 
-.script-comment-author {
+.script-comment-meta {
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding-top: 1px;
+}
+
+.script-comment-author {
   font-family: var(--font-ui);
   font-size: 13px;
   font-weight: 600;
@@ -976,19 +984,25 @@
   white-space: nowrap;
 }
 
-.script-comment-delete {
-  flex-shrink: 0;
-  width: 22px;
-  height: 22px;
-  border-radius: 999px;
+.script-comment-time {
+  font-family: var(--font-ui);
+  font-size: 11px;
   color: var(--text-muted);
-  font-size: 16px;
-  line-height: 1;
 }
 
-.script-comment-delete:hover {
-  background: var(--bg-hover);
-  color: var(--danger);
+.script-comment-resolve {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--comment-accent);
+}
+
+.script-comment-resolve:hover {
+  background: color-mix(in srgb, var(--comment-accent) 14%, transparent);
 }
 
 .script-comment-body {
@@ -1360,7 +1374,7 @@
   }
 
   .script-stage {
-    flex-direction: column-reverse;
+    flex-direction: column;
     align-items: stretch;
     width: 100%;
   }
@@ -1387,12 +1401,17 @@
   }
 
   .quick-actions {
-    position: static;
+    position: absolute;
+    top: auto;
+    bottom: 12px;
+    right: 8px;
     flex-direction: row;
     flex-wrap: wrap;
     justify-content: center;
-    width: 100%;
+    max-width: calc(100% - 16px);
     padding: 6px 8px;
+    border-radius: var(--radius-md);
+    border-right: 1px solid var(--border-default);
   }
 
   .quick-actions-divider {
