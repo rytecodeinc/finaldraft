@@ -196,9 +196,10 @@ export function ScriptElementLine({
     if (formatted !== element.text) {
       updateElementText(element.id, formatted)
     }
-    // Remove blank placeholders when leaving a line (keep other focused line).
+    // Remove blank placeholders left behind, but keep the active writing line
+    // (e.g. the empty element just created by Enter).
     window.requestAnimationFrame(() => {
-      pruneBlankElements(null)
+      pruneBlankElements()
     })
   }, [element.id, element.text, element.type, pruneBlankElements, updateElementText])
 
@@ -264,7 +265,12 @@ export function ScriptElementLine({
       if (event.key === 'Enter' && !event.shiftKey) {
         event.preventDefault()
         setMenuOpen(false)
+        // Prevent the outgoing blur prune from dropping the new empty line.
+        cyclingTypeRef.current = true
         handleEnter(element.id)
+        window.requestAnimationFrame(() => {
+          cyclingTypeRef.current = false
+        })
         return
       }
 
