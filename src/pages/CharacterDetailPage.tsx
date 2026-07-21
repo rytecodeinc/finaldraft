@@ -124,7 +124,7 @@ export function CharacterDetailPage() {
 
   return (
     <div className="page">
-      <div className="page-inner page-inner--detail">
+      <div className="page-inner">
         <header className="page-hero detail-hero">
           <p className="page-kicker">
             <Link to={projectPath(projectId, 'characters')}>Characters</Link>

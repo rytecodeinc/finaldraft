@@ -461,10 +461,6 @@
   font-weight: 400;
 }
 
-.page-inner--detail {
-  max-width: 960px;
-}
-
 .detail-hero .page-kicker a {
   color: inherit;
   text-decoration: none;
