@@ -64,11 +64,21 @@ export function ScriptEditor() {
     setPageCount(pageCount + 1)
   }, [pageCount, setPageCount])
 
-  // When pagination remounts the active element onto another page, restore focus.
+  // When pagination moves the active element onto another page, restore focus.
   useLayoutEffect(() => {
     const prev = prevPageSigRef.current
     prevPageSigRef.current = pageSig
     if (prev === pageSig || !selectedId) return
+
+    const pageIndexFor = (sig: string, id: string) =>
+      sig.split('|').findIndex((page) => page.split(',').includes(id))
+
+    const prevPage = pageIndexFor(prev, selectedId)
+    const nextPage = pageIndexFor(pageSig, selectedId)
+    // New element (Enter) already gets focus from insertAfter — don't refocus.
+    if (prevPage < 0) return
+    // Still on the same page — no remount restore needed.
+    if (prevPage === nextPage) return
 
     const active = document.activeElement
     const stillFocused =

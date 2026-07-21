@@ -379,11 +379,7 @@ export const useScriptStore = create<ScriptState>((set, get) => ({
       get().updateElementText(id, formatted)
     }
 
-    if (element.text.trim() === '' && element.type !== 'sceneHeading') {
-      get().cycleType(id, 1)
-      return id
-    }
-
+    // Enter always creates the next logical element. Tab cycles types.
     return get().insertAfter(id, ENTER_NEXT_TYPE[element.type])
   },
 

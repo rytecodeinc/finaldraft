@@ -52,6 +52,73 @@ function samePages(a: string[][], b: string[][]): boolean {
 }
 
 /**
+ * Keep existing page breaks when elements are inserted/removed so the script
+ * does not collapse to a single page and flash a full re-layout on every Enter.
+ */
+function reconcilePageGroups(prev: string[][], elementIds: string[]): string[][] {
+  if (elementIds.length === 0) return [[]]
+  if (prev.length === 0) return [elementIds]
+
+  const prevFlat = prev.flat()
+  const prevSet = new Set(prevFlat)
+  const nextSet = new Set(elementIds)
+
+  // Drop removed ids, keep page structure.
+  const groups = prev
+    .map((page) => page.filter((id) => nextSet.has(id)))
+    .filter((page) => page.length > 0)
+
+  if (groups.length === 0) return [elementIds]
+
+  // Insert brand-new ids after their predecessor on that predecessor's page.
+  for (const id of elementIds) {
+    if (prevSet.has(id)) continue
+    const index = elementIds.indexOf(id)
+    const predecessor = index > 0 ? elementIds[index - 1]! : null
+
+    if (predecessor) {
+      let placed = false
+      for (const page of groups) {
+        const at = page.indexOf(predecessor)
+        if (at >= 0) {
+          page.splice(at + 1, 0, id)
+          placed = true
+          break
+        }
+      }
+      if (!placed) groups[groups.length - 1]!.push(id)
+    } else {
+      groups[0]!.unshift(id)
+    }
+  }
+
+  // Ensure flat order matches elementIds (handles rare reorders).
+  const flat = groups.flat()
+  if (flat.length === elementIds.length && flat.every((id, i) => id === elementIds[i])) {
+    return groups
+  }
+
+  // Rebuild pages by walking elementIds and cutting where previous page breaks were.
+  const pageBreakAfter = new Set<string>()
+  for (let p = 0; p < groups.length - 1; p++) {
+    const last = groups[p]![groups[p]!.length - 1]
+    if (last) pageBreakAfter.add(last)
+  }
+
+  const rebuilt: string[][] = [[]]
+  for (const id of elementIds) {
+    rebuilt[rebuilt.length - 1]!.push(id)
+    if (pageBreakAfter.has(id) && rebuilt[rebuilt.length - 1]!.length > 0) {
+      rebuilt.push([])
+    }
+  }
+  if (rebuilt[rebuilt.length - 1]!.length === 0 && rebuilt.length > 1) {
+    rebuilt.pop()
+  }
+  return rebuilt.length > 0 ? rebuilt : [elementIds]
+}
+
+/**
  * Measures live element nodes and packs them into US Letter body pages.
  * Title page is rendered separately and is not included here.
  */
@@ -77,7 +144,7 @@ export function useScriptPagination(elements: ScreenplayElement[]) {
       ) {
         return prev
       }
-      return [elementIds]
+      return reconcilePageGroups(prev, elementIds)
     })
   }, [elementIds])
 
